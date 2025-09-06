@@ -3,6 +3,8 @@ import styles from "./AsciiBadger.module.css";
 import { AsciiBadger } from "./badger.logic";
 import { ALLOWED_EXTS, ANIM_DIR, PREFETCH_ANIMS } from "./badger.constants";
 import { politePrefetch } from "@/lib/prefetch";
+import MoltenTitle from '@/components/branding/MoltenTitle'
+
 
 const AsciiBadgerPage: React.FC = () => {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -75,6 +77,11 @@ const AsciiBadgerPage: React.FC = () => {
 
   return (
     <div className={`${styles.root} ${styles.scanlines} ${styles.vignette}`}>
+      {/* Title layer BELOW the ASCII stage */}
++      <div className={styles.titleLayer}>
++        <MoltenTitle text="Medeni Jazbec" />
++      </div>
+      
       {/* HUD */}
       <div className={styles.hud}>
         <div className={styles.row}>

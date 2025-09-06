@@ -4,19 +4,30 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { AsciiEffect } from "three/examples/jsm/effects/AsciiEffect.js";
 import {
-  ANIM_DIR, ALLOWED_EXTS, ASCII_CHARSET, LABELS, FALLBACK_CLIPS,
-  SCAN_ANIM_DIR, USE_DRACO, DRACO_DECODER_PATH
+  ANIM_DIR,
+  ALLOWED_EXTS,
+  ASCII_CHARSET,
+  LABELS,
+  FALLBACK_CLIPS,
+  SCAN_ANIM_DIR,
+  USE_DRACO,
+  DRACO_DECODER_PATH,
 } from "./badger.constants";
 
-// Silence Canvas2D readback warnings + make AsciiEffect a bit faster.
+/** Silence Canvas2D readback warnings & speed up AsciiEffect reads without upsetting TS types. */
 (() => {
-  const orig = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function (type: any, opts?: any) {
-    if (type === "2d") {
-      return orig.call(this, type, { willReadFrequently: true, ...(opts || {}) });
-    }
-    return orig.call(this, type, opts);
-  };
+  const proto = HTMLCanvasElement.prototype as any;
+  const orig: (this: HTMLCanvasElement, ...args: any[]) => any = proto.getContext;
+  if (typeof orig === "function") {
+    proto.getContext = function (...args: any[]) {
+      const [kind, opts] = args;
+      if (kind === "2d") {
+        // Use .apply so TS sees exactly 2 args (thisArg + argsArray) rather than 3 on .call()
+        return (orig as any).apply(this, ["2d", { willReadFrequently: true, ...(opts || {}) }]);
+      }
+      return (orig as any).apply(this, args);
+    };
+  }
 })();
 
 /** Utilities to load & play GLB clips inside an ASCII-rendered Three.js scene. */
@@ -50,7 +61,10 @@ export class AsciiBadger {
     // Core
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
-      45, this.mount.clientWidth / this.mount.clientHeight, 0.1, 5000
+      45,
+      this.mount.clientWidth / this.mount.clientHeight,
+      0.1,
+      5000
     );
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -86,13 +100,13 @@ export class AsciiBadger {
     this.loader = new GLTFLoader();
     if (USE_DRACO) {
       this.draco = new DRACOLoader();
-      this.draco.setDecoderPath(DRACO_DECODER_PATH); // e.g. /draco/ or Google CDN
-      // this.draco.setDecoderConfig({ type: "js" }); // optional
+      this.draco.setDecoderPath(DRACO_DECODER_PATH); // e.g. "/draco/"
       this.loader.setDRACOLoader(this.draco);
     }
 
     // events
     window.addEventListener("resize", this.onResize);
+    // Some type defs omit reset(); call defensively.
     window.addEventListener("dblclick", () => (this.controls as any).reset?.());
 
     // start render loop
@@ -103,7 +117,7 @@ export class AsciiBadger {
     window.removeEventListener("resize", this.onResize);
     this.clearCurrent();
     this.controls.dispose();
-    this.draco?.dispose();
+    this.draco?.dispose?.();
     this.renderer.dispose();
     this.mount.removeChild(this.effect.domElement);
   };
@@ -218,8 +232,10 @@ export class AsciiBadger {
   private fitAndStage(rootOrHelper: THREE.Object3D) {
     rootOrHelper.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(rootOrHelper);
-    const size = new THREE.Vector3(); box.getSize(size);
-    const center = new THREE.Vector3(); box.getCenter(center);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
 
     rootOrHelper.position.sub(center);
     rootOrHelper.updateMatrixWorld(true);
@@ -253,7 +269,9 @@ export class AsciiBadger {
 
   private ensureVisible(obj: THREE.Object3D) {
     let hasGeo = false;
-    obj.traverse((o: any) => { if (o.isMesh || o.isSkinnedMesh || o.geometry) hasGeo = true; });
+    obj.traverse((o: any) => {
+      if (o.isMesh || o.isSkinnedMesh || o.geometry) hasGeo = true;
+    });
     if (!hasGeo) {
       this.skeletonHelper = new THREE.SkeletonHelper(obj);
       (this.skeletonHelper.material as any).linewidth = 2;

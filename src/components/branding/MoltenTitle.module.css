@@ -1,0 +1,53 @@
+/* src/components/branding/MoltenTitle.module.css */
+.wrap{
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+}
+
+.title{
+  font-family: 'Moliga', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: var(--mj-font-size, clamp(64px, 10vw, 172px));
+  line-height: .82;
+  letter-spacing: var(--mj-letter-spacing, .06em);
+  word-spacing: var(--mj-word-spacing, .22em);
+  color: var(--phosphor);
+  margin: 0;
+  padding: 0;
+  font-weight: 500;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  /* pseudo-3D thickness controlled by --mj-depth-step */
+  text-shadow:
+    calc(1 * var(--mj-depth-step, 1px)) calc(1 * var(--mj-depth-step, 1px)) 0 #0ecb66,
+    calc(2 * var(--mj-depth-step, 1px)) calc(2 * var(--mj-depth-step, 1px)) 0 #0caf59,
+    calc(3 * var(--mj-depth-step, 1px)) calc(3 * var(--mj-depth-step, 1px)) 0 #0a934d,
+    calc(4 * var(--mj-depth-step, 1px)) calc(4 * var(--mj-depth-step, 1px)) 0 #087a41,
+    calc(5 * var(--mj-depth-step, 1px)) calc(5 * var(--mj-depth-step, 1px)) 0 #066236,
+    calc(6 * var(--mj-depth-step, 1px)) calc(6 * var(--mj-depth-step, 1px)) 0 #044b2a;
+}
+
+.sub{
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(10px, 1.35vw, 14px);
+  opacity: .85;
+  color: var(--phosphor);
+}
+
+.ooze{
+  display: inline-block;
+  position: relative;
+  width: auto;                 /* width is set from script; keep auto for centering */
+  margin: var(--mj-ooze-gap, 8px) auto 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: clamp(10px, 1.05vw, 14px);
+  line-height: 1;
+  color: var(--phosphor);
+  white-space: pre;
+}

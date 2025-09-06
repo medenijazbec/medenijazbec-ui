@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import styles from './AnimGroups.module.css'
 import { AsciiPreview } from '@/components/admin/AsciiPreview'
-import { animgroups, SaveGroupRequest } from '@/controllers/animationGroups'
+import { animgroups, type SaveGroupRequest } from '@/controllers/animationGroups'
 import { ANIM_DIR, ALLOWED_EXTS, SCAN_ANIM_DIR } from '@/components/badger/badger.constants'
 import { Button } from '@/components/ui/Button'
 
