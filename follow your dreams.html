@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Swirling Text — MEDENI JAZBEC</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{
+    background: radial-gradient(120% 85% at 50% 50%, #0a1439, #081336 60%, #061032 100%);
+    color:#9bb7ff; font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+    overflow:hidden;
+  }
+  .scanlines::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
+  }
+  #grid{
+    position:fixed; inset:0; padding:8px;
+    line-height:1;
+    letter-spacing:0.08em;
+    font-size:16px;
+    white-space:pre; pointer-events:none;
+  }
+  .row{height:1em}
+</style>
+</head>
+<body class="scanlines">
+
+<pre id="grid"></pre>
+
+<script>
+/* --------- source line (shown fully across each row before swirl) --------- */
+const LINE = "\\Fear and doubt are social constructs to keep you in line. Follow your dreams and reconnect with your inner child.                                                ";
+const LINE_WITH_SPACE = LINE + " ";
+
+/* (unused now, kept for compatibility if you ever want random text again) */
+const SOURCE = LINE;
+
+/* ---------------------------- ASCII banner font --------------------------- */
+const FONT = {
+  'A':["    /\\    ","   /  \\   ","  / /\\ \\  "," / ____ \\ ","/_/    \\_\\"],
+  'B':[" ____  ","| __ ) ","|  _ \\ ","| |_) |","|____/ "],
+  'C':["  ____ "," / ___|","| |    ","| |___ "," \\____|"],
+  'D':[" ____  ","|  _ \\ ","| | | |","| |_| |","|____/ "],
+  'E':[" _____ ","| ____|","|  _|  ","| |___ ","|_____|"],
+  'I':[" ___ ","|_ _|"," | | "," | | ","|___|"],
+  'J':["     _ ","    | |"," _  | |","| |_| |"," \\___/ "],
+  'M':[" __  __ ","|  \\/  |","| |\\/| |","| |  | |","|_|  |_|"],
+  'N':[" _   _ ","| \\ | |","|  \\| |","| |\\  |","|_| \\_|"],
+  'Z':[" ______","|___  /","   / / ","  / /__"," /_____|"],
+  ' ':["   ","   ","   ","   ","   "]
+};
+
+function makeBanner(text){
+  const t = text.toUpperCase();
+  const height = 5;
+  const lines = Array.from({length: height}, () => "");
+  const GAP = "  ";
+  for (let i = 0; i < t.length; i++){
+    const ch = t[i];
+    const glyph = FONT[ch] || FONT[' '];
+    for (let r = 0; r < height; r++){
+      lines[r] += glyph[r] + GAP;
+    }
+  }
+  return lines.map(l => l.replace(/\s+$/,''));
+}
+
+/* ---------------------------------- grid --------------------------------- */
+const grid = document.getElementById('grid');
+
+let TOTAL_ROWS = 0, COLS = 0;
+let rows = [];
+let textElems = [];
+let logoTop = 0, logoLeft = 0, logoRows = [], logoCols = 0;
+
+function measureCellSize(){
+  const cs = getComputedStyle(grid);
+  const linePx = parseFloat(cs.lineHeight);
+  const meas = document.createElement('span');
+  meas.textContent = 'M';
+  meas.style.visibility = 'hidden';
+  meas.style.whiteSpace = 'pre';
+  grid.appendChild(meas);
+  const charPx = meas.getBoundingClientRect().width;
+  grid.removeChild(meas);
+  return { charPx, linePx };
+}
+
+function rebuildGrid(){
+  const { charPx, linePx } = measureCellSize();
+  COLS = Math.max(10, Math.floor(window.innerWidth / charPx));
+  TOTAL_ROWS = Math.max(6, Math.floor(window.innerHeight / linePx));
+
+  // build rows as full sentences, repeated to fill each line
+  rows = [];
+  const repeatsNeeded = Math.ceil(COLS / LINE_WITH_SPACE.length);
+  const filler = LINE_WITH_SPACE.repeat(repeatsNeeded);
+  for (let y = 0; y < TOTAL_ROWS; y++) {
+    rows.push(filler.slice(0, COLS));
+  }
+
+  // banner
+  logoRows = makeBanner("MEDENI JAZBEC");
+  logoCols = Math.max(...logoRows.map(l => l.length));
+
+  // center the banner
+  logoTop  = Math.max(0, Math.floor(TOTAL_ROWS/2 - logoRows.length/2));
+  logoLeft = Math.max(0, Math.floor(COLS/2 - logoCols/2));
+
+  // draw grid
+  grid.innerHTML = "";
+  textElems = [];
+  for (let y = 0; y < TOTAL_ROWS; y++) {
+    const line = document.createElement('div');
+    line.className = 'row';
+    line.textContent = rows[y];
+    grid.appendChild(line);
+    textElems.push(line);
+  }
+}
+
+rebuildGrid();
+addEventListener('resize', () => {
+  clearTimeout(rebuildGrid._t);
+  rebuildGrid._t = setTimeout(rebuildGrid, 60);
+});
+
+/* --------------------------- swirl + timings ----------------------------- */
+// Wider rings
+const COORD_SCALE   = 0.72;
+const RING_FALLOFF  = 2.20;
+const RADIAL_GAMMA  = 0.85;
+const RING_STEP     = 0.040;
+const ANGLE_STEP    = 0.060;
+const BASE_SPEED    = 0.11;
+
+// delay before anything moves (so you can read the lines)
+const SWIRL_DELAY = 0.2;   // seconds
+const revealStart = 1.0;   // after swirl starts
+const revealDur   = 5.0;
+
+let t0 = performance.now();
+
+function animate(ts){
+  requestAnimationFrame(animate);
+  if (rows.length === 0) return;
+
+  const tReal = (ts - t0) * 0.001;
+  const t = Math.max(0, tReal - SWIRL_DELAY); // 0 until delay elapses
+
+  const totalRows = rows.length, cols = rows[0].length;
+
+  for (let y = 0; y < totalRows; y++) {
+    let rowStr = "";
+    const s0 = 1 - 2 * (y / totalRows);
+    const s  = s0 * COORD_SCALE;
+
+    for (let x = 0; x < cols; x++) {
+      const o0 = 2 * (x / cols) - 1;
+      const o  = o0 * COORD_SCALE;
+
+      // (simple swirl version; you can keep your quantized version if preferred)
+      const d = Math.sqrt(o*o + s*s);
+      const l = BASE_SPEED * t / Math.pow(Math.max(0.1, d), RING_FALLOFF);
+      const sinL = Math.sin(l), cosL = Math.cos(l);
+
+      const u = o * sinL - s * cosL;
+      let m = Math.round(((o * cosL + s * sinL) + 1) / 2 * cols);
+      let h = Math.round(((u + 1) / 2) * totalRows) % totalRows;
+
+      if (m < 0) m = 0; if (m >= cols) m = cols - 1;
+      if (h < 0) h = 0; if (h >= totalRows) h = totalRows - 1;
+
+      let ch = rows[h][m] || " ";
+
+      // logo blend
+      const inLogo = (y >= logoTop && y < logoTop + logoRows.length &&
+                      x >= logoLeft && x < logoLeft + logoCols);
+      if (inLogo) {
+        const logoChar = logoRows[y - logoTop][x - logoLeft] || " ";
+        if (logoChar !== " ") {
+          const phase = Math.min(Math.max((t - revealStart)/revealDur, 0), 1);
+          const blended =
+            Math.round(ch.charCodeAt(0)*(1-phase) + logoChar.charCodeAt(0)*phase);
+          ch = String.fromCharCode(blended);
+        }
+      }
+      rowStr += ch;
+    }
+    textElems[y].textContent = rowStr;
+  }
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
