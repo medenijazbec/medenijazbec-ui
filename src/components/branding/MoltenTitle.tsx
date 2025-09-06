@@ -9,7 +9,7 @@ const TITLE = {
   letterSpacing: '.05em',                  // space between letters
   wordSpacing: '.01em',                    // space between words
   depthStepPx: 3.0,                        // pseudo-3D thickness step (text-shadow offset per layer)
-  oozeGapPx: -170,                           // vertical gap between title and molten ASCII
+  oozeGapPx: -170,                         // vertical gap between title and molten ASCII
 };
 
 type Props = { text?: string; subline?: string };

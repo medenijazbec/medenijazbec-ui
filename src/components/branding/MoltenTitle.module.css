@@ -18,10 +18,10 @@
   margin: 0;
   padding: 0;
   font-weight: 500;
-    white-space: nowrap;
-    text-wrap: nowrap;
-    overflow-wrap: normal;
-    word-break: normal;
+  white-space: nowrap;
+  text-wrap: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   /* pseudo-3D thickness controlled by --mj-depth-step */
   text-shadow:
     calc(1 * var(--mj-depth-step, 1px)) calc(1 * var(--mj-depth-step, 1px)) 0 #0ecb66,

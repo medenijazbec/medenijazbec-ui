@@ -1,10 +1,10 @@
+// src/components/badger/AsciiBadgerPage.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./AsciiBadger.module.css";
 import { AsciiBadger } from "./badger.logic";
 import { ALLOWED_EXTS, ANIM_DIR, PREFETCH_ANIMS } from "./badger.constants";
 import { politePrefetch } from "@/lib/prefetch";
 import MoltenTitle from '@/components/branding/MoltenTitle'
-
 
 const AsciiBadgerPage: React.FC = () => {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -45,10 +45,13 @@ const AsciiBadgerPage: React.FC = () => {
     await core?.loadClipPath(name);
   };
 
-  const onPlayPause = () => { core?.togglePlay(); forceRerender(); };
-  const onTurntable = () => { core?.toggleTurntable(); forceRerender(); };
-  const onLight = () => { core?.toggleLightSpin(); forceRerender(); };
-  const onOpenFile = () => fileRef.current?.click();
+  const [, setTick] = useState(0);
+  const forceRerender = () => setTick((t) => t + 1);
+
+  const onPlayPause  = () => { core?.togglePlay();       forceRerender(); };
+  const onTurntable  = () => { core?.toggleTurntable();  forceRerender(); };
+  const onLight      = () => { core?.toggleLightSpin();  forceRerender(); };
+  const onOpenFile   = () => fileRef.current?.click();
 
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,16 +75,16 @@ const AsciiBadgerPage: React.FC = () => {
     [core]
   );
 
-  const [, setTick] = useState(0);
-  const forceRerender = () => setTick((t) => t + 1);
-
   return (
-    <div className={`${styles.root} ${styles.scanlines} ${styles.vignette}`}>
+    <div
+      className={`${styles.root} ${styles.scanlines} ${styles.vignette}`}
+      style={{ ['--title-to-badger-gap' as any]: '20rem' }} /* ≈20rem spacing */
+    >
       {/* Title layer BELOW the ASCII stage */}
-+      <div className={styles.titleLayer}>
-+        <MoltenTitle text="Medeni Jazbec" />
-+      </div>
-      
+      <div className={styles.titleLayer}>
+        <MoltenTitle text="Medeni Jazbec" />
+      </div>
+
       {/* HUD */}
       <div className={styles.hud}>
         <div className={styles.row}>
@@ -94,9 +97,7 @@ const AsciiBadgerPage: React.FC = () => {
           <label htmlFor="clip">Clip:</label>
           <select id="clip" value={current} onChange={onChangeClip}>
             {clips.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
 

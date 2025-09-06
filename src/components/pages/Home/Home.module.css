@@ -1,6 +1,15 @@
 :root { --bg:#071a14; --phosphor:#00ff66; }
+
 .page { color: var(--phosphor); background: var(--bg); min-height: 100vh; }
+
 .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
 .h1 { font-size: 1.8rem; margin-bottom: .75rem; }
 .p { opacity: .9; }
 
+/* NEW: footer ensures there’s content below the viewport */
+.footer {
+  margin-top: 4rem;
+  border-top: 1px solid rgba(0,255,102,.25);
+  background: rgba(0,0,0,.25);
+}

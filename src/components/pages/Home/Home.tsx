@@ -1,18 +1,24 @@
+// src/pages/Home.tsx
 import styles from './Home.module.css';
 import { useHomeLogic } from './Home.logic';
 import AsciiBadger from '@/components/badger/AsciiBadger';
 
-
-
 export default function Home() {
-useHomeLogic();
-return (
-<div className={styles.page}>
-<div className={styles.container}>
-<h1 className={styles.h1}>HoneyBadger Console</h1>
-<p className={styles.p}>Client-side ASCII stage. Choose an animation to play locally in your browser.</p>
-</div>
-<AsciiBadger />
-</div>
-);
+  useHomeLogic();
+  return (
+    <div className={styles.page}>
+      <div className={styles.container}>
+      
+      </div>
+
+      <AsciiBadger />
+
+      {/* NEW footer so the page scrolls */}
+      <footer className={styles.footer}>
+        <div className={styles.container}>
+          © {new Date().getFullYear()} Medeni Jazbec — all rights reserved.
+        </div>
+      </footer>
+    </div>
+  );
 }
