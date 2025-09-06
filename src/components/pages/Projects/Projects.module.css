@@ -1,0 +1,7 @@
+.page { color: var(--phosphor); background: var(--bg); min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.h2 { font-size: 1.25rem; margin-bottom: .75rem; }
+.grid { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+@media (min-width: 768px) { .grid { grid-template-columns: 1fr 1fr; } }
+.cardTitle { font-weight: 600; }
+.cardSub { opacity: .8; font-size: .9rem; }
