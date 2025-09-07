@@ -18,7 +18,11 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
-        <DreamsHero onRevealDone={handleAsciiRevealed} reverse={reverseAscii} />
+        <DreamsHero
+            onRevealDone={handleAsciiRevealed}
+            reverse={reverseAscii}
+            leadMs={200}   // ← start Molten 1,000 ms before ASCII finishes
+          />
         <div className={`${styles.heroContent} ${showMolten ? styles.in : ''}`}>
           <MoltenTitle text="Medeni Jazbec" />
         </div>

@@ -2,15 +2,21 @@
 import React, { useEffect, useRef } from 'react';
 import styles from './DreamsHero.module.css';
 
+// type Props ...
 type Props = {
-  /** Fires once when the ASCII outline finishes revealing (phase hits 1). */
   onRevealDone?: () => void;
-  /** When true, the outline reverses (fades back into background characters). */
   reverse?: boolean;
+  /** Start onRevealDone this many ms BEFORE the ASCII fully reveals */
+  leadMs?: number; // NEW
 };
 
-const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
+const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false, leadMs = 0 }) => {
   const gridRef = useRef<HTMLPreElement | null>(null);
+  const overlayRef = useRef<HTMLPreElement | null>(null); // RGB overlay (logo only)
+
+  // keep latest leadMs inside RAF without re-running effect
+  const leadSecRef = useRef((leadMs ?? 0) / 1000);
+  useEffect(() => { leadSecRef.current = (leadMs ?? 0) / 1000; }, [leadMs]);
 
   // keep latest reverse flag available inside the RAF loop
   const reverseRef = useRef(reverse);
@@ -26,11 +32,37 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
+    const targetEl = el as HTMLPreElement;
 
     /* --------- background filler line (swirl source) --------- */
-    const LINE =
-      "\\Fear and doubt are social constructs to keep you in line. Follow your dreams and reconnect with your inner child.                                                ";
-    const LINE_WITH_SPACE = LINE + " ";
+    const RAW_QUOTES = String.raw`
+\Brake fuild? No you can't be that strong.             
+\Birds flu? Yeah they do that.          
+\Peanut? At the same time?         
+\Fear and doubt are social constructs to keep you in line.       
+\Follow your dreams and reconnect with your inner child.
+\Iran? No I walked there.       
+\I am the Lorax, I speak for the trees.
+\Metal gear solid? Yeah they're not supposed to break.
+\Selfish? How much?
+\Fish sticks? Yea if you throw it hard enough.
+\He always betrays them, he always!            
+\Can I buy some crude oil?             
+\I am the Senate.
+\Uau            
+\Give drug to grug
+\Ahj
+\F1 im a scav, f1                           
+\I am once again asking for your financial support              
+\E služivej e to naša točka
+\Ahti jebagla
+`;
+
+    const LINE = RAW_QUOTES
+      .replace(/\\/g, '\n')
+      .split(/\r?\n/);
+
+    const LINE_WITH_SPACE = LINE.join(' ') + ' ';
 
     /* ---------------------------- 9x9 ASCII OUTLINE FONT (ALL CAPS) ---------------------------- */
     const FONT: Record<string, string[]> = {
@@ -44,17 +76,7 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
       M: [" __  __  ","|  \\/  | ","| \\  / | ","| |\\/| | ","| |  | | ","| |  | | ","|_|  |_| ","         ","         "],
       N: [" _   _   ","| \\ | |  ","|  \\| |  ","| . ` |  ","| |\\  |  ","| | \\ |  ","|_|  \\_| ","         ","         "],
       Z: [" _______ ","     / / ","    / /  ","   / /   ","  / /    "," / /____ ","/_______|","         ","         "],
-      " ": [
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
-    ],
+      " ": ["","","","","","","","",""],
     };
 
     type BannerData = {
@@ -88,7 +110,7 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
         for (let r = 0; r < glyphH; r++) lines[r] += GAP;
         cursor += glyphW + GAP.length;
       }
-      return { lines, spans, height: glyphH, width: lines[0].length };
+      return { lines, spans: spans as any, height: glyphH, width: lines[0].length };
     }
 
     // Precomputed overlay + mask (updated on rebuild)
@@ -127,6 +149,7 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
     let TOTAL_ROWS = 0, COLS = 0;
     let rows: string[] = [];
     let textElems: HTMLDivElement[] = [];
+    let overlayElems: HTMLDivElement[] = []; // rows for the RGB overlay
     let logoTop = 0, logoLeft = 0, logoRows: string[] = [], logoCols = 0;
 
     function measureCellSize(target: HTMLElement) {
@@ -159,11 +182,13 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
       logoRows = banner.lines;
       logoCols = banner.width;
       logoOutlineRows = banner.lines.map((s) => s);
-      logoInsideMask = computeInsideMask(banner.lines, banner.spans);
+     
+      logoInsideMask = computeInsideMask(banner.lines, (banner as any).spans);
 
       logoTop  = Math.max(0, Math.floor(TOTAL_ROWS / 2 - logoRows.length / 2));
       logoLeft = Math.max(0, Math.floor(COLS / 2 - logoCols / 2));
 
+      // Draw static DOM lines for base grid
       target.innerHTML = "";
       textElems = [];
       for (let y = 0; y < TOTAL_ROWS; y++) {
@@ -173,11 +198,26 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
         target.appendChild(line);
         textElems.push(line as HTMLDivElement);
       }
+
+      // Draw static DOM lines for RGB overlay (same row count/width)
+      const overlayEl = overlayRef.current;
+      if (overlayEl) {
+        overlayEl.innerHTML = "";
+        overlayElems = [];
+        for (let y = 0; y < TOTAL_ROWS; y++) {
+          const line = document.createElement("div");
+          line.className = styles.row;
+          // start empty (all spaces), we’ll fill only logo chars per frame
+          line.textContent = " ".repeat(rows[y].length);
+          overlayEl.appendChild(line);
+          overlayElems.push(line as HTMLDivElement);
+        }
+      }
     }
 
-    rebuildGrid(el);
-    const ro = new ResizeObserver(() => rebuildGrid(el));
-    ro.observe(el);
+    rebuildGrid(targetEl);
+    const ro = new ResizeObserver(() => rebuildGrid(targetEl));
+    ro.observe(targetEl);
 
     /* --------------------------- swirl + timings ----------------------------- */
     const COORD_SCALE = 0.72;
@@ -188,7 +228,7 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
     const revealStart = 0.0;        // when reveal begins (after swirl starts)
     const revealDurIn = 5.0;        // reveal duration (fade in)
     const revealDurOut = 3.1;       // reverse duration (fade out)
-
+    const revealFireAt = revealStart + revealDurIn; // full reveal time
     let t0 = performance.now();
     let raf = 0;
 
@@ -196,6 +236,34 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
 
     function clamp01(v: number) { return v < 0 ? 0 : v > 1 ? 1 : v; }
     function ease(p: number) { const x = clamp01(p); return x * x * (3 - 2 * x); } // smoothstep
+
+    // === RGB timewarp config (Sony Vegas style channel split) — OVERLAY ONLY ===
+    const RGB_BASE_SPLIT = 1.5;   // px
+    const RGB_WOBBLE = 1.0;       // px
+    const RGB_BURST = 3.0;        // px
+    const WOBBLE_HZ_R = 0.9;
+    const WOBBLE_HZ_B = 1.3;
+    const BURST_PERIOD = 2.5;     // seconds
+    const BURST_DUR = 0.10;       // seconds
+
+    // SAFE setter: update CSS vars on the overlay only
+    const setRGBOffsets = (rx: number, ry: number, bx: number, by: number) => {
+      const node = overlayRef.current;
+      if (!node) return;
+      node.style.setProperty('--rgb-rx', `${rx}px`);
+      node.style.setProperty('--rgb-ry', `${ry}px`);
+      node.style.setProperty('--rgb-bx', `${bx}px`);
+      node.style.setProperty('--rgb-by', `${by}px`);
+    };
+
+    // Track overlay visibility to avoid flicker
+    const overlayVisibleRef = { current: true };
+
+    function setOverlayVisible(visible: boolean) {
+      const node = overlayRef.current;
+      if (!node) return;
+      node.style.opacity = visible ? '0.92' : '0'; // hide when off
+    }
 
     function animate(ts: number) {
       raf = requestAnimationFrame(animate);
@@ -211,6 +279,11 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
 
       // Forward reveal phase (0->1)
       const forwardPhase = clamp01((t - revealStart) / revealDurIn);
+
+      if (!revealedOnceRef.current && t >= (revealFireAt - leadSecRef.current)) {
+        revealedOnceRef.current = true;
+        onRevealDoneRef.current?.();
+      }
       if (!revealedOnceRef.current && forwardPhase >= 1) {
         revealedOnceRef.current = true;
         onRevealDoneRef.current?.();
@@ -218,14 +291,42 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
 
       // Final phase (forward or reversing)
       let phase = forwardPhase;
+      let reverseDone = false;
       if (reverseStart !== null) {
         const out = clamp01((t - reverseStart) / revealDurOut);
         phase = 1 - out; // goes from 1 back to 0
+        reverseDone = out >= 1;
       }
       const phaseE = ease(phase);
 
+      // Decide if overlay should be active (draw + wobble) this frame
+      const overlayActive = phaseE > 0.001 && !reverseDone;
+
+      // Apply / zero RGB offsets and show/hide overlay
+      if (overlayActive) {
+        const wr = Math.sin(t * Math.PI * 2 * WOBBLE_HZ_R);
+        const wb = Math.cos(t * Math.PI * 2 * WOBBLE_HZ_B);
+        let ax = RGB_BASE_SPLIT + RGB_WOBBLE * 0.7 * wr;
+        let ay = RGB_BASE_SPLIT * 0.3 + RGB_WOBBLE * 0.5 * wb;
+        const inBurst = (t % BURST_PERIOD) < BURST_DUR;
+        if (inBurst) { ax += RGB_BURST; ay -= RGB_BURST * 0.5; }
+        const rx = Math.round(ax);
+        const ry = Math.round(ay);
+        const bx = Math.round(-ax * 0.85);
+        const by = Math.round(ay * 0.6);
+        setRGBOffsets(rx, ry, bx, by);
+        setOverlayVisible(true);
+      } else {
+        setRGBOffsets(0, 0, 0, 0);
+        setOverlayVisible(false);
+      }
+
+      // Precompute a blank row to quickly clear overlay when needed
+      const blankRow = " ".repeat(cols);
+
       for (let y = 0; y < totalRows; y++) {
         let rowStr = "";
+        let overlayRowStr = ""; // only logo outline here (or blanks)
         const s0 = 1 - 2 * (y / totalRows);
         const s = s0 * COORD_SCALE;
 
@@ -251,6 +352,8 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
             y >= logoTop && y < logoTop + logoRows.length &&
             x >= logoLeft && x < logoLeft + logoCols;
 
+          let overlayCh = " "; // default: nothing on overlay
+
           if (withinLogo) {
             const ly = y - logoTop;
             const lx = x - logoLeft;
@@ -261,22 +364,46 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
               !!(logoInsideMask[ly] && logoInsideMask[ly][lx]);
 
             if (outlineChar !== " ") {
+              // Base grid gets blended (as before)
               const blended = Math.round(
                 ch.charCodeAt(0) * (1 - phaseE) + outlineChar.charCodeAt(0) * phaseE
               );
               ch = String.fromCharCode(blended);
+
+              // Overlay shows ONLY the outline char while active
+              if (overlayActive) {
+                overlayCh = ch; // render on overlay only if active
+              } else {
+                overlayCh = " ";
+              }
             } else if (isInside) {
-              const blended = Math.round(
+              const blendedToSpace = Math.round(
                 ch.charCodeAt(0) * (1 - phaseE) + 32 * phaseE
               );
-              ch = String.fromCharCode(blended);
+              ch = String.fromCharCode(blendedToSpace);
+              // overlayCh stays space (no RGB on cleared interior)
             }
           }
           // -------------------------------------------------------------
 
           rowStr += ch;
+          overlayRowStr += overlayCh;
         }
-        textElems[y].textContent = rowStr;
+
+        // update base grid
+        if (textElems[y]) textElems[y].textContent = rowStr;
+
+        // update overlay rows
+        if (overlayElems[y]) {
+          if (overlayActive) {
+            overlayElems[y].textContent = overlayRowStr;
+          } else {
+            // fully clear the overlay row when inactive (post-reverse)
+            if (overlayElems[y].textContent !== blankRow) {
+              overlayElems[y].textContent = blankRow;
+            }
+          }
+        }
       }
     }
 
@@ -290,6 +417,8 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false }) => {
   return (
     <div className={styles.root}>
       <pre id="grid" ref={gridRef} className={styles.grid} />
+      {/* RGB overlay that only draws the ASCII logo; gets hidden/cleared after reverse */}
+      <pre ref={overlayRef} className={styles.overlay} />
     </div>
   );
 };

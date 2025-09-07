@@ -1,11 +1,12 @@
+/* src/components/branding/DreamsHero.module.css */
 .root{
   position: absolute;
-  inset: 0;               /* span the whole hero */
+  inset: 0;
   z-index: 0;
   pointer-events: none;
 }
 
-/* ensure the pre covers 100% of the hero box */
+/* base CRT text grid (no RGB split here) */
 .grid{
   position: absolute;
   inset: 0;
@@ -22,4 +23,32 @@
   z-index: 0;
 }
 
+/* rows populated via script */
 .row{ height: 1em; }
+
+/* === RGB overlay — only the ASCII banner is drawn here === */
+.overlay{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  font-size: 16px;
+  white-space: pre;
+  color: var(--phosphor); /* base green text; shadows add RGB split */
+  opacity: .92;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+  z-index: 1;            /* above .grid, below other hero content */
+  pointer-events: none;
+
+  /* Offsets are driven by JS on this overlay only */
+  --rgb-rx: 0px; --rgb-ry: 0px;     /* red clone offset */
+  --rgb-bx: 0px; --rgb-by: 0px;     /* blue clone offset */
+
+  /* Red & blue channel splits (glitchy timewarp look) */
+  text-shadow:
+    var(--rgb-rx) var(--rgb-ry) 0 rgba(255, 64, 64, 0.55),
+    var(--rgb-bx) var(--rgb-by) 0 rgba(64, 160, 255, 0.55);
+}
