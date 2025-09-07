@@ -46,3 +46,64 @@ button:hover, select:hover{ background:rgba(0,255,102,.08) }
   top: calc(var(--stage-offset-y) + var(--title-to-badger-gap, 0px));
   z-index: 0;
 }
+/* ========== STACK: puts the two HUDs one under the other ========== */
+.hudStack{
+  position:absolute;
+  left:14px;
+  right:14px;          /* span nearly full width */
+  top:12px;
+  z-index:2;           /* above stage only */
+  display:grid;
+  gap:10px;            /* space between the two bars */
+}
+
+/* ====== ORIGINAL HUD (moved inside hudStack) ====== */
+.hud{
+  position:relative;   /* no longer absolute */
+  padding:10px 12px;
+  border:1px solid rgba(0,255,102,.35);
+  background:rgba(7,26,20,.85);
+  box-shadow:0 0 18px rgba(0,255,102,.35);
+  border-radius:8px;   /* keep curved corners for the original */
+  font-size:12px;
+  color:var(--phosphor);
+}
+
+.row{ display:flex; gap:.5rem; align-items:center; margin:.25rem 0 }
+
+select, button{
+  border:1px solid rgba(0,255,102,.35);
+  background:transparent; color:var(--phosphor);
+  padding:6px 10px; border-radius:6px; cursor:pointer
+}
+button:hover, select:hover{ background:rgba(0,255,102,.08) }
+.note{ opacity:.85 }
+
+/* hidden input */
+.hiddenInput{ display:none }
+
+/* ====== NEW: full-width cyberpunk buttons bar ====== */
+.hudWide{
+  position:relative;
+  padding:10px 12px;
+  border:1px solid rgba(0,255,102,.35);
+  background:rgba(7,26,20,.85);
+  box-shadow:0 0 18px rgba(0,255,102,.35);
+  border-radius:0;     /* square corners as requested */
+}
+
+/* grid that stretches buttons left->right; wraps on smaller screens */
+.hudButtons{
+  display:grid;
+  grid-template-columns: repeat(10, minmax(120px, 1fr)); /* 10 across when space allows */
+  gap:10px;
+  width:100%;
+}
+
+/* AsciiEffect canvas host (unchanged) */
+.stage{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  top: calc(var(--stage-offset-y) + var(--title-to-badger-gap, 0px));
+  z-index: 0;
+}

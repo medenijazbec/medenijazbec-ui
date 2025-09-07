@@ -95,6 +95,9 @@ const AsciiBadgerPage: React.FC = () => {
           <button onClick={onOpenFile}>Open GLB</button>
           <span className={styles.note}>{status}</span>
         </div>
+
+
+
       </div>
 
       {/* hidden file input */}
