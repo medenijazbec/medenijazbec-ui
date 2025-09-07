@@ -119,3 +119,21 @@
   border-top:1px solid rgba(0,255,102,.25);
   background:rgba(0,0,0,.25);
 }
+/* Centered hero content; add entrance animation */
+.heroContent{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  pointer-events: none;
+
+  opacity: 0;
+  transform: translateY(10px) scale(.985);
+  transition: opacity .9s cubic-bezier(.22,.77,.23,.99),
+              transform .9s cubic-bezier(.22,.77,.23,.99);
+}
+.heroContent.in{
+  opacity: 1;
+  transform: none;
+}

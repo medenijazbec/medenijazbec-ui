@@ -1,23 +1,29 @@
+import { useEffect, useState } from 'react';
 import styles from './Home.module.css';
-import { useHomeLogic } from './Home.logic';
 import AsciiBadger from '@/components/badger/AsciiBadger';
 import DreamsHero from '@/components/branding/DreamsHero';
 import MoltenTitle from '@/components/branding/MoltenTitle';
 
 export default function Home() {
-  useHomeLogic();
+  const [showMolten, setShowMolten] = useState(false);
+  const [reverseAscii, setReverseAscii] = useState(false);
+
+  // Fired by DreamsHero when the ASCII outline fully reveals
+  const handleAsciiRevealed = () => {
+    setShowMolten(true);                 // pop the MoltenTitle in
+    // After the MoltenTitle entrance finishes, reverse the ASCII outline
+    setTimeout(() => setReverseAscii(true), 600); // match CSS transition below
+  };
 
   return (
     <div className={styles.page}>
-      {/* HERO — background swirl fills, CRT limited to hero, title sits above CRT */}
       <section className={styles.hero}>
-        <DreamsHero />
-        <div className={styles.heroContent}>
+        <DreamsHero onRevealDone={handleAsciiRevealed} reverse={reverseAscii} />
+        <div className={`${styles.heroContent} ${showMolten ? styles.in : ''}`}>
           <MoltenTitle text="Medeni Jazbec" />
         </div>
       </section>
 
-      {/* 3D ASCII badger plays after scrolling past the hero */}
       <section className={styles.badger}>
         <AsciiBadger />
       </section>
