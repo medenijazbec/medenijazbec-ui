@@ -1,4 +1,3 @@
-/* src/components/branding/MoltenTitle.module.css */
 .wrap{
   position: relative;
   width: fit-content;
@@ -22,7 +21,6 @@
   text-wrap: nowrap;
   overflow-wrap: normal;
   word-break: normal;
-  /* pseudo-3D thickness controlled by --mj-depth-step */
   text-shadow:
     calc(1 * var(--mj-depth-step, 1px)) calc(1 * var(--mj-depth-step, 1px)) 0 #0ecb66,
     calc(2 * var(--mj-depth-step, 1px)) calc(2 * var(--mj-depth-step, 1px)) 0 #0caf59,
@@ -38,16 +36,4 @@
   font-size: clamp(10px, 1.35vw, 14px);
   opacity: .85;
   color: var(--phosphor);
-}
-
-.ooze{
-  display: inline-block;
-  position: relative;
-  width: auto;                 /* width is set from script; keep auto for centering */
-  margin: var(--mj-ooze-gap, 8px) auto 0;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: clamp(10px, 1.05vw, 14px);
-  line-height: 1;
-  color: var(--phosphor);
-  white-space: pre;
 }

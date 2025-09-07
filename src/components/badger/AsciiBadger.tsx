@@ -1,10 +1,8 @@
-// src/components/badger/AsciiBadgerPage.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./AsciiBadger.module.css";
 import { AsciiBadger } from "./badger.logic";
 import { ALLOWED_EXTS, ANIM_DIR, PREFETCH_ANIMS } from "./badger.constants";
 import { politePrefetch } from "@/lib/prefetch";
-import MoltenTitle from '@/components/branding/MoltenTitle'
 
 const AsciiBadgerPage: React.FC = () => {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -15,7 +13,6 @@ const AsciiBadgerPage: React.FC = () => {
   const [current, setCurrent] = useState<string>("");
   const [status, setStatus] = useState<string>("");
 
-  // Create core once
   useEffect(() => {
     if (!stageRef.current) return;
 
@@ -76,22 +73,13 @@ const AsciiBadgerPage: React.FC = () => {
   );
 
   return (
-    <div
-      className={`${styles.root} ${styles.scanlines} ${styles.vignette}`}
-      style={{ ['--title-to-badger-gap' as any]: '20rem' }} /* ≈20rem spacing */
-    >
-      {/* Title layer BELOW the ASCII stage */}
-      <div className={styles.titleLayer}>
-        <MoltenTitle text="Medeni Jazbec" />
-      </div>
-
-      {/* HUD */}
+   
+    <div className={styles.root}>
+      {/* HUD (now absolute, not fixed) */}
       <div className={styles.hud}>
         <div className={styles.row}>
           <strong>ASCII Animation</strong>
-          <span className={styles.note}>
-            • Drag = rotate • Scroll = zoom • Double-click = reset
-          </span>
+          <span className={styles.note}>• Drag = rotate • Scroll = zoom • Double-click = reset</span>
         </div>
         <div className={styles.row}>
           <label htmlFor="clip">Clip:</label>

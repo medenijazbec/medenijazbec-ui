@@ -1,15 +1,121 @@
-:root { --bg:#071a14; --phosphor:#00ff66; }
+:root{
+  --bg:#071a14;
+  --phosphor:#00ff66;
+  --hero-h: 90vh;
 
-.page { color: var(--phosphor); background: var(--bg); min-height: 100vh; }
+  /* === darker, CRT-y tuning (keeps your colors) === */
+  /* CRT */
+  --crt-line-alpha: .16;      /* bright line strength */
+  --crt-shade-alpha: .22;     /* NEW: dark band strength */
+  --crt-thickness: 1px;       /* line thickness */
+  --crt-gap: 2.1px;           /* denser spacing */
+  --crt-opacity: .95;         /* overall CRT intensity */
 
-.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  /* Vignette (edge darkening) */
+  --vig-inner: 48%;           /* pull darkening inward */
+  --vig-mid: 70%;
+  --vig-outer: 98%;
+  --vig-alpha-mid: .26;       /* stronger mid ring */
+  --vig-alpha-outer: .50;     /* darker far edges */
 
-.h1 { font-size: 1.8rem; margin-bottom: .75rem; }
-.p { opacity: .9; }
+  /* Center glow (keep middle readable, but not too bright) */
+  --glow-alpha: .08;
+  --glow-radius-x: 62%;
+  --glow-radius-y: 46%;
+  --glow-center-y: 48%;
+}
 
-/* NEW: footer ensures there’s content below the viewport */
-.footer {
-  margin-top: 4rem;
-  border-top: 1px solid rgba(0,255,102,.25);
-  background: rgba(0,0,0,.25);
+.page{ color:var(--phosphor); background:var(--bg); min-height:100vh; }
+
+.container{ max-width:1200px; margin:0 auto; padding:2rem; }
+
+.h1{ font-size:1.8rem; margin-bottom:.75rem; }
+.p{ opacity:.9; }
+
+/* HERO — DreamsHero is clipped to this band only */
+.hero{
+  position: relative;
+  height: var(--hero-h);
+  overflow: hidden;              /* nothing spills outside */
+  isolation: isolate;            /* keep stacking local */
+  background:
+    radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
+}
+
+/* VIGNETTE — darker edges/corners, hero only */
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:-1px;                    /* tiny bleed to avoid edge seams */
+  pointer-events:none;
+  background:
+    radial-gradient(120% 100% at 50% 50%,
+      rgba(0,0,0,0) var(--vig-inner),
+      rgba(0,0,0,var(--vig-alpha-mid)) var(--vig-mid),
+      rgba(0,0,0,var(--vig-alpha-outer)) var(--vig-outer)
+    );
+  mix-blend-mode: multiply;      /* safe darken without tinting */
+  z-index: 1;                    /* below scanlines, below title */
+}
+
+/* CRT scanlines — stronger + added dark bands for depth, hero only */
+.hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+
+  /* LAYER 1: dark bands (add shadow between lines)
+     LAYER 2: bright scanline highlights
+     LAYER 3: subtle center glow to keep middle readable */
+  background:
+    /* dark bands */
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,var(--crt-shade-alpha)) 0 calc(var(--crt-thickness) + 0.6px),
+      rgba(0,0,0,0) calc(var(--crt-thickness) + 0.6px) calc(var(--crt-thickness) + var(--crt-gap) + 0.6px)
+    ),
+    /* bright highlights */
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,var(--crt-line-alpha)) 0 var(--crt-thickness),
+      transparent var(--crt-thickness) calc(var(--crt-thickness) + var(--crt-gap))
+    ),
+    /* center glow */
+    radial-gradient(
+      var(--glow-radius-x) var(--glow-radius-y) at 50% var(--glow-center-y),
+      rgba(255,255,255,var(--glow-alpha)) 0 35%,
+      rgba(255,255,255,0) 60%
+    );
+
+  /* stable global blend with the scene; keeps DreamsHero visible */
+  mix-blend-mode: soft-light;
+  opacity: var(--crt-opacity);
+
+  z-index: 2;                    /* above vignette & grid, below title */
+}
+
+/* Centered hero content (title), sits ABOVE both overlays */
+.heroContent{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;                    /* ensure title is above ::before/::after */
+  pointer-events: none;
+}
+
+/* Stage for the ASCII badger */
+.badger{
+  display: grid;
+  place-items: center;
+  padding: 64px 16px;
+  min-height: 60vh;
+}
+
+/* footer ensures there’s content below the viewport */
+.footer{
+  margin-top:4rem;
+  border-top:1px solid rgba(0,255,102,.25);
+  background:rgba(0,0,0,.25);
 }

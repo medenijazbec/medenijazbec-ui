@@ -1,50 +1,31 @@
-/* src/components/badger/AsciiBadger.module.css */
 :root{
   --bg:#071a14;
   --phosphor:#00ff66;
-  /* how far the stage (badger) starts from the very top */
   --stage-offset-y: clamp(140px, 18vh, 320px);
 }
 
 /* Component root fills at least viewport (allow page scroll) */
 .root {
-  min-height: 100vh;           /* was height:100vh */
-  width: 100vw;
-  overflow: visible;           /* was hidden; now page can scroll */
+  position: relative;        /* establish containing block */
+  min-height: 100vh;
+  width: 100%;
+  overflow: visible;
   background: var(--bg);
   color: var(--phosphor);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  position: relative;
 }
 
-/* CRT look */
-.scanlines::before{
-  content:"";
-  position:fixed; inset:0;
-  background:repeating-linear-gradient(
-    to bottom,
-    rgba(0,0,0,.18) 0px,
-    rgba(0,0,0,.18) 2px,
-    rgba(0,0,0,0) 3px,
-    rgba(0,0,0,0) 4px
-  );
-  pointer-events:none; mix-blend-mode:multiply;
-}
-.vignette::after{
-  content:"";
-  position:fixed; inset:0;
-  background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 96%);
-  pointer-events:none;
-}
+/* REMOVE global CRT & vignette (they were fixed viewport overlays) */
+/* .scanlines::before, .vignette::after — deleted on purpose */
 
-/* HUD */
+/* HUD — keep it INSIDE the badger section */
 .hud{
-  position:fixed; left:14px; top:12px; padding:10px 12px;
+  position:absolute; left:14px; top:12px; padding:10px 12px;
   border:1px solid rgba(0,255,102,.35);
   background:rgba(7,26,20,.85);
   box-shadow:0 0 18px rgba(0,255,102,.35);
   border-radius:8px; font-size:12px; color:var(--phosphor);
-  z-index:10
+  z-index:2; /* above stage only */
 }
 .row{ display:flex; gap:.5rem; align-items:center; margin:.25rem 0 }
 select, button{
@@ -58,46 +39,10 @@ button:hover, select:hover{ background:rgba(0,255,102,.08) }
 /* hidden input */
 .hiddenInput{ display:none }
 
-/* AsciiEffect canvas */
+/* AsciiEffect canvas host */
 .stage{
   position:absolute;
   left:0; right:0; bottom:0;
-  /* add ~20rem gap below title before stage starts */
   top: calc(var(--stage-offset-y) + var(--title-to-badger-gap, 0px));
   z-index: 0;
 }
-
-/* Title (centered) between HUD and stage */
-.titleLayer{
-  position:absolute;
-  top: 28px;                /* a bit more breathing room */
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  width: min(92vw, 1400px);
-  pointer-events: none;
-}
-
-/* ---- Optional site styling you had ---- */
-* { margin:0; padding:0; box-sizing:border-box; }
-.pageBody { font-family:'Roboto',sans-serif; line-height:1.6; color:#333; background-color:#f9f9f9; }
-.container{ width:90%; max-width:1100px; margin:auto; padding:20px 0; }
-header{ background-color:#333; color:#fff; padding:20px 0; }
-header h1{ display:inline-block; }
-nav ul{ list-style:none; float:right; }
-nav ul li{ display:inline; margin-left:20px; }
-nav ul li a{ color:#fff; text-decoration:none; }
-.hero{ background:url(assets/background.jpg) no-repeat center/cover; color:#fff; padding:100px 0; text-align:center; }
-.hero h2{ font-size:3em; }
-section{ padding:60px 0; }
-.about, .music, .events, .contact{
-  background:#fff; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.1);
-}
-section h2{ margin-bottom:20px; color:#444; }
-audio{ width:100%; margin-top:10px; }
-.events ul{ list-style-type:square; padding-left:20px; }
-.contact form{ display:flex; flex-direction:column; gap:15px; }
-.contact input, .contact textarea{ padding:10px; font-size:1em; }
-.contact button{ padding:10px; background:#333; color:#fff; border:none; cursor:pointer; }
-footer{ background:#333; color:#fff; text-align:center; padding:20px 0; }
-.socials a{ color:#fff; margin:0 5px; text-decoration:underline; }

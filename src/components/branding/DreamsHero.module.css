@@ -1,0 +1,25 @@
+.root{
+  position: absolute;
+  inset: 0;               /* span the whole hero */
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ensure the pre covers 100% of the hero box */
+.grid{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  font-size: 16px;
+  white-space: pre;
+  color: var(--phosphor);
+  opacity: .82;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+  z-index: 0;
+}
+
+.row{ height: 1em; }
