@@ -18,11 +18,11 @@ const GLITCH_GROW = 0.018;
 
 // 🔒 Hard-coded hotspot centers (normalized 0..1 of the stage)
 const HOTSPOTS = {
-  red: { x: 0.42, y: 0.86 },  // Hardware  → 42%, 86%
+  red:  { x: 0.42, y: 0.86 }, // Hardware  → 42%, 86%
   blue: { x: 0.58, y: 0.86 }, // Software  → 58%, 86%
 };
 
-// Looser color classification for cell tinting
+// Looser color classification for cell tinting (2× looser than original)
 const COLOR_THRESH = {
   satMin: 15,  // (was 30)
   valMin: 30,  // (was 60)
@@ -163,7 +163,7 @@ function imageToAsciiFrame(
   return { lines, cols, rows, colorTag };
 }
 
-/** Color-dominance pill finder (normalized) */
+/** Bottom-half color-dominance centroids (used to position arm windows for glitch) */
 function detectPills(img: HTMLImageElement): PillCenters {
   const { c, ctx } = makeCanvas();
   const W = 320;
@@ -299,8 +299,9 @@ export default function ProjectsPage() {
       if (stop || !wrapRef.current) return;
       raf = requestAnimationFrame(draw);
 
-      const image = imgs![mode];
-      const centers = centersMap![mode];
+      // select scene assets
+      const sceneImg = imgs![mode];
+      const sceneCenters = centersMap![mode];
 
       // measure cell & padding
       const { cw, ch } = ensureMetrics();
@@ -314,10 +315,10 @@ export default function ProjectsPage() {
       const innerH = rect.height - padY;
 
       const cols = Math.max(100, Math.floor(innerW / cw));
-      const rows = Math.max(48, Math.floor(innerH / ch));
+      const rows = Math.max(48,  Math.floor(innerH / ch));
 
       const t = ts * 0.001;
-      const frame = imageToAsciiFrame(image, cols, rows, t);
+      const frame = imageToAsciiFrame(sceneImg, cols, rows, t);
 
       // base ASCII
       base.textContent = frame.lines.join("\n");
@@ -326,11 +327,11 @@ export default function ProjectsPage() {
       const nudgeCols = Math.round(NUDGE.x * frame.cols);
       const nudgeRows = Math.round(NUDGE.y * frame.rows);
 
-      // arm regions for overlays (from image detection)
-      const rx = (centers.red?.x ?? 0.28);
-      const ry = (centers.red?.y ?? 0.78);
-      const bx = (centers.blue?.x ?? 0.72);
-      const by = (centers.blue?.y ?? 0.78);
+      // arm regions for overlays (from color centroids; used only for glitch masking)
+      const rx = (sceneCenters.red?.x ?? 0.28);
+      const ry = (sceneCenters.red?.y ?? 0.78);
+      const bx = (sceneCenters.blue?.x ?? 0.72);
+      const by = (sceneCenters.blue?.y ?? 0.78);
 
       const toCol = (nx: number) => clamp(Math.round(nx * frame.cols), 0, frame.cols - 1);
       const toRow = (ny: number) => clamp(Math.round(ny * frame.rows), 0, frame.rows - 1);
@@ -340,6 +341,7 @@ export default function ProjectsPage() {
       const bCol = clamp(toCol(bx) + nudgeCols, 0, frame.cols - 1);
       const bRow = clamp(toRow(by) + nudgeRows, 0, frame.rows - 1);
 
+      // arm window sizes
       const rw = Math.round(frame.cols * 0.26);
       const rh = Math.round(frame.rows * 0.28);
 
@@ -353,10 +355,9 @@ export default function ProjectsPage() {
       const bTop   = clamp(bRow - Math.round(rh * 0.65), 0, frame.rows - 1);
       const bBot   = clamp(bRow + Math.round(rh * 0.35), 0, frame.rows - 1);
 
+      // Build arm masks (for glitch) and full-frame red/blue overlays
       const leftLines: string[] = [];
       const rightLines: string[] = [];
-
-      // Build arm masks and color overlays
       const redLines: string[] = [];
       const blueLines: string[] = [];
 
@@ -366,11 +367,13 @@ export default function ProjectsPage() {
         for (let x = 0; x < frame.cols; x++) {
           const ch = baseRow[x] ?? " ";
 
+          // arm masks (for RGB glitch only)
           const inLeft  = x >= rLeft && x <= rRight && y >= rTop && y <= rBot;
           const inRight = x >= bLeft && x <= bRight && y >= bTop && y <= bBot;
           L += inLeft ? ch : " ";
           R += inRight ? ch : " ";
 
+          // full-frame color overlays (no tiny pill windows anymore)
           const tag = frame.colorTag[y * frame.cols + x];
           RP += tag === 1 ? ch : " ";
           BP += tag === 2 ? ch : " ";
@@ -384,11 +387,11 @@ export default function ProjectsPage() {
       left.textContent = leftLines.join("\n");
       right.textContent = rightLines.join("\n");
 
-      // Color overlays only when that hand is active/hovered
-      pillR.textContent = (mode === "hardware" && hover.red) ? redLines.join("\n") : "";
-      pillB.textContent = (mode === "software" && hover.blue) ? blueLines.join("\n") : "";
+      // Always draw color overlays for the current scene
+      pillR.textContent = redLines.join("\n");
+      pillB.textContent = blueLines.join("\n");
 
-      // Glitch on arms while close
+      // Glitch on arms while near their tight boxes
       if (hover.red || glitch.red) { left.classList.add(styles.glitch); setGlitchVars(t, left); }
       else { left.classList.remove(styles.glitch); setRGB(left, 0, 0, 0, 0); }
 
@@ -400,7 +403,7 @@ export default function ProjectsPage() {
     return () => { stop = true; cancelAnimationFrame(raf); ro.disconnect(); };
   }, [imgs, centersMap, mode, hover.red, hover.blue, glitch.red, glitch.blue]);
 
-  // Hover → SMALL RECTANGULAR HITBOXES (hard-coded centers)
+  // Hover → SMALL RECTANGULAR HITBOXES (hard-coded centers) to switch scenes + glitch
   useEffect(() => {
     if (!wrapRef.current) return;
     const el = wrapRef.current;
@@ -476,7 +479,7 @@ export default function ProjectsPage() {
           <pre ref={leftRef}  className={`${styles.ascii} ${styles.overlay}`} />
           <pre ref={rightRef} className={`${styles.ascii} ${styles.overlay}`} />
 
-          {/* Colored pill overlays (cells tagged from image) */}
+          {/* Colored overlays from full-frame red/blue tags */}
           <pre ref={pillRedRef}  className={`${styles.ascii} ${styles.pillRed}`} />
           <pre ref={pillBlueRef} className={`${styles.ascii} ${styles.pillBlue}`} />
 
@@ -494,7 +497,7 @@ export default function ProjectsPage() {
 
           {hint && <div className={styles.hint}>{hint}</div>}
 
-          {/* Visible hotbox outlines */}
+          {/* Optional: visible hotbox outlines for tuning/QA */}
           <div
             className={`${styles.hotbox} ${styles.hotboxRed} ${styles.hotboxGlitch}`}
             style={{

@@ -1,13 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
+/* ================== Theme & runtime vars ================== */
 :root{
   --bg:#071a14;
   --phosphor:#00ff66;
 
+  /* RGB split offsets (set by JS for the glitch wobble) */
   --rgb-rx: 0px; --rgb-ry: 0px;
   --rgb-bx: 0px; --rgb-by: 0px;
+
+  /* Label styling */
+  --label-bg: rgba(7,26,20,.9);
+  --label-border: rgba(0,255,102,.35);
+  --label-shadow: 0 0 18px rgba(0,255,102,.35);
+
+  /* Stage */
+  --stage-border: rgba(0,255,102,.18);
+  --stage-grad-a: #0a2b22;
+  --stage-grad-b: #081f19;
+  --stage-grad-c: #072117;
 }
 
+/* ================== Layout ================== */
 .page{
   min-height: 100vh;
   background: var(--bg);
@@ -25,26 +39,26 @@
   width: min(96vw, 1920px);
   aspect-ratio: 16 / 9;
   margin: 18px auto 12px auto;
-  border: 1px solid rgba(0,255,102,.18);
-  background: radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
+  border: 1px solid var(--stage-border);
+  background: radial-gradient(120% 85% at 50% 0%, var(--stage-grad-a) 0%, var(--stage-grad-b) 60%, var(--stage-grad-c) 100%);
   overflow: hidden;
 }
 
-/* Base ASCII block */
+/* ================== ASCII layers ================== */
 .ascii{
   position: absolute;
   inset: 0;
   margin: 0;
   padding: 10px;
   line-height: 1.02;
-  letter-spacing: 0em;
+  letter-spacing: 0;
   font-size: 16px;
   white-space: pre;
   color: var(--phosphor);
   opacity: .94;
   background: transparent;
   user-select: none;
-  pointer-events: none;
+  pointer-events: none; /* let the stage receive mouse events */
   text-rendering: optimizeSpeed;
 }
 
@@ -55,36 +69,50 @@
 .pillRed{
   z-index: 3;
   color: #ff4d4d;
-  text-shadow: 0 0 6px rgba(255,0,0,.7), 0 0 18px rgba(255,0,0,.35);
+  /* ↑ make glow stronger by increasing blur + alpha and adding layers */
+  text-shadow:
+    0 0 12px  rgba(255,0,0,.90),
+    0 0 28px rgba(255,0,0,.70),
+    0 0 52px rgba(255,0,0,.45);
 }
 .pillBlue{
   z-index: 3;
   color: #4db6ff;
-  text-shadow: 0 0 6px rgba(64,160,255,.7), 0 0 18px rgba(64,160,255,.35);
+  text-shadow:
+    0 0 12px  rgba(64,160,255,.90),
+    0 0 28px rgba(64,160,255,.70),
+    0 0 52px rgba(64,160,255,.45);
 }
 
 /* Glitch timewarp RGB effect applied to overlay pre blocks when active */
 .glitch{
   text-shadow:
-    var(--rgb-rx) var(--rgb-ry) 0 rgba(255, 64, 64, 0.55),
-    var(--rgb-bx) var(--rgb-by) 0 rgba(64, 160, 255, 0.55);
+    var(--rgb-rx) var(--rgb-ry) 0 rgba(255, 64, 64, 0.95),
+    var(--rgb-bx) var(--rgb-by) 0 rgba(64, 160, 255, 0.95);
 }
 
-/* Labels shown near the pills (hotspot-controlled) */
+
+/* ================== Labels & hints ================== */
 .label{
   position: absolute;
   transform: translate(-50%, -100%);
   padding: 6px 10px;
-  border: 1px solid rgba(0,255,102,.35);
-  background: rgba(7,26,20,.9);
-  box-shadow: 0 0 18px rgba(0,255,102,.35);
+  border: 1px solid var(--label-border);
+  background: var(--label-bg);
+  box-shadow: var(--label-shadow);
   font-size: 13px;
   z-index: 4;
   pointer-events: none;
   white-space: nowrap;
 }
-.labelRed{ border-color: rgba(255,80,80,.6); box-shadow: 0 0 18px rgba(255,80,80,.25); }
-.labelBlue{ border-color: rgba(64,160,255,.6); box-shadow: 0 0 18px rgba(64,160,255,.25); }
+.labelRed{
+  border-color: rgba(255,80,80,.6);
+  box-shadow: 0 0 18px rgba(255,80,80,.25);
+}
+.labelBlue{
+  border-color: rgba(64,160,255,.6);
+  box-shadow: 0 0 18px rgba(64,160,255,.25);
+}
 
 /* Tiny status hint in the corner */
 .hint{
@@ -97,6 +125,25 @@
   pointer-events: none;
 }
 
+/* ================== Debug hotbox outlines ================== */
+.hotbox{
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.hotboxSwitch{ border: 1px solid rgba(0,255,102,.7); }
+.hotboxGlitch{ border: 1px dashed rgba(0,255,102,.25); }
+
+/* tint by hand */
+.hotboxRed.hotboxSwitch{ border-color: rgba(255,80,80,.85); }
+.hotboxRed.hotboxGlitch{ border-color: rgba(255,80,80,.28); }
+.hotboxBlue.hotboxSwitch{ border-color: rgba(64,160,255,.85); }
+.hotboxBlue.hotboxGlitch{ border-color: rgba(64,160,255,.28); }
+
+/* ================== Extras ================== */
 /* Small illustrative strip (optional) */
 .strip{
   display: grid;
@@ -123,20 +170,12 @@
   margin: 0;
 }
 
-/* ───── Hotbox outlines (for debugging precision) ───── */
-.hotbox{
-  position: absolute;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 5;
-  border-radius: 8px;
-  box-sizing: border-box;
+/* ================== Responsive niceties ================== */
+@media (max-width: 900px){
+  .ascii{ font-size: 14px; }
+  .label{ font-size: 12px; }
 }
-.hotboxSwitch{ border: 1px solid rgba(0,255,102,.7); }
-.hotboxGlitch{ border: 1px dashed rgba(0,255,102,.25); }
-
-/* tint by hand */
-.hotboxRed.hotboxSwitch{ border-color: rgba(255,80,80,.8); }
-.hotboxRed.hotboxGlitch{ border-color: rgba(255,80,80,.28); }
-.hotboxBlue.hotboxSwitch{ border-color: rgba(64,160,255,.8); }
-.hotboxBlue.hotboxGlitch{ border-color: rgba(64,160,255,.28); }
+@media (max-width: 600px){
+  .ascii{ font-size: 12px; }
+  .label{ font-size: 11px; }
+}
