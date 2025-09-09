@@ -51,7 +51,7 @@
 /* Overlays used to isolate each arm (filled with spaces elsewhere) */
 .overlay{ z-index: 2; }
 
-/* Colored pill overlays (only '@' are written) */
+/* Colored pill overlays (only cells tagged red/blue are written) */
 .pillRed{
   z-index: 3;
   color: #ff4d4d;
@@ -123,23 +123,20 @@
   margin: 0;
 }
 
-/* === Visible hotbox outlines (for precise targeting) === */
+/* ───── Hotbox outlines (for debugging precision) ───── */
 .hotbox{
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 5;
-  border-radius: 6px;
+  border-radius: 8px;
   box-sizing: border-box;
 }
-.hotboxSwitch{ border: 1px solid rgba(0,255,102,.55); }
-.hotboxGlitch{
-  border: 1px dashed rgba(0,255,102,.28);
-  mix-blend-mode: screen;
-}
+.hotboxSwitch{ border: 1px solid rgba(0,255,102,.7); }
+.hotboxGlitch{ border: 1px dashed rgba(0,255,102,.25); }
 
-.hotboxRed.hotboxSwitch{ border-color: rgba(255,80,80,.65); }
+/* tint by hand */
+.hotboxRed.hotboxSwitch{ border-color: rgba(255,80,80,.8); }
 .hotboxRed.hotboxGlitch{ border-color: rgba(255,80,80,.28); }
-
-.hotboxBlue.hotboxSwitch{ border-color: rgba(64,160,255,.65); }
+.hotboxBlue.hotboxSwitch{ border-color: rgba(64,160,255,.8); }
 .hotboxBlue.hotboxGlitch{ border-color: rgba(64,160,255,.28); }

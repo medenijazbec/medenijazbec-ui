@@ -18,8 +18,16 @@ const GLITCH_GROW = 0.018;
 
 // 🔒 Hard-coded hotspot centers (normalized 0..1 of the stage)
 const HOTSPOTS = {
-  red:  { x: 0.42, y: 0.86 }, // Hardware  → 42%, 86%
+  red: { x: 0.42, y: 0.86 },  // Hardware  → 42%, 86%
   blue: { x: 0.58, y: 0.86 }, // Software  → 58%, 86%
+};
+
+// Looser color classification for cell tinting
+const COLOR_THRESH = {
+  satMin: 15,  // (was 30)
+  valMin: 30,  // (was 60)
+  redEdge: 17, // (was 35)
+  blueEdge: 12 // (was 25)
 };
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -28,7 +36,13 @@ type Mode = "default" | "hardware" | "software";
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const LUMA = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-type AsciiFrame = { lines: string[]; cols: number; rows: number };
+type AsciiFrame = {
+  lines: string[];
+  cols: number;
+  rows: number;
+  /** 0=none, 1=red, 2=blue for each cell (row-major) */
+  colorTag: Uint8Array;
+};
 type PillCenters = { red?: { x: number; y: number }, blue?: { x: number; y: number } };
 
 function makeCanvas() {
@@ -47,7 +61,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Image → ASCII (oversampled, letterboxed & centered), then nudged */
+/** Image → ASCII (oversampled, letterboxed & centered), then nudged.
+ *  Also tags each character cell as red/blue/none based on average RGB. */
 function imageToAsciiFrame(
   img: HTMLImageElement,
   cols: number,
@@ -56,8 +71,8 @@ function imageToAsciiFrame(
 ): AsciiFrame {
   const { c, ctx } = makeCanvas();
 
-  const charAspect = 2.0;
-  const SCALE = 2;
+  const charAspect = 2.0; // glyphs ~2× taller than wide
+  const SCALE = 2;        // oversample to reduce noise
 
   const targetW = cols * SCALE;
   const targetH = Math.round(rows * charAspect) * SCALE;
@@ -66,6 +81,7 @@ function imageToAsciiFrame(
   c.height = targetH;
   ctx.imageSmoothingEnabled = true;
 
+  // letterbox + center
   const scale = Math.min(targetW / img.width, targetH / img.height);
   const drawW = img.width * scale;
   const drawH = img.height * scale;
@@ -73,9 +89,11 @@ function imageToAsciiFrame(
   let dx = (targetW - drawW) / 2;
   let dy = (targetH - drawH) / 2;
 
+  // manual nudge
   dx += NUDGE.x * targetW;
   dy += NUDGE.y * targetH;
 
+  // tiny idle wobble
   const wobble = 0.15 * SCALE;
   dx += Math.sin(t * 0.8) * wobble;
   dy += Math.cos(t * 0.65) * wobble;
@@ -92,35 +110,57 @@ function imageToAsciiFrame(
 
   const CHARSET = ASCII_CHARSET[0] === " " ? ASCII_CHARSET : [...ASCII_CHARSET].reverse();
 
+  const colorTag = new Uint8Array(cols * rows);
   const lines: string[] = [];
+
   for (let y = 0; y < rows; y++) {
     const sy0 = y * cellH;
     const sy1 = Math.min((y + 1) * cellH, targetH);
+
     let row = "";
     for (let x = 0; x < cols; x++) {
       const sx0 = x * cellW;
       const sx1 = Math.min((x + 1) * cellW, targetW);
 
-      let sum = 0, count = 0;
+      let sumL = 0, sumR = 0, sumG = 0, sumB = 0, count = 0;
       for (let py = sy0; py < sy1; py++) {
         const base = py * targetW;
         for (let px = sx0; px < sx1; px++) {
           const i = (base + px) * 4;
-          sum += LUMA(data[i], data[i + 1], data[i + 2]);
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          sumR += r; sumG += g; sumB += b; sumL += LUMA(r, g, b);
           count++;
         }
       }
-      let lum = (sum / count) / 255;
 
-      if (lum < BLACK_FLOOR) { row += " "; continue; }
+      const r = sumR / count, g = sumG / count, b = sumB / count;
+      let lum = (sumL / count) / 255;
+
+      // ASCII glyph by brightness
+      if (lum < BLACK_FLOOR) {
+        row += " ";
+        colorTag[y * cols + x] = 0;
+        continue;
+      }
       lum = Math.pow((lum - BLACK_FLOOR) / (1 - BLACK_FLOOR), GAMMA);
-
       const ci = Math.min(CHARSET.length - 1, Math.max(0, Math.round(lum * (CHARSET.length - 1))));
-      row += CHARSET[ci];
+      const ch = CHARSET[ci];
+      row += ch;
+
+      // classify cell color (simple RGB dominance)
+      const v = Math.max(r, g, b);
+      const m = Math.min(r, g, b);
+      const sat = v - m;
+      let tag = 0;
+      if (v > COLOR_THRESH.valMin && sat > COLOR_THRESH.satMin) {
+        if (r > g + COLOR_THRESH.redEdge && r > b + COLOR_THRESH.redEdge) tag = 1;
+        else if (b > r + COLOR_THRESH.blueEdge && b > g + COLOR_THRESH.blueEdge) tag = 2;
+      }
+      colorTag[y * cols + x] = tag;
     }
     lines.push(row);
   }
-  return { lines, cols, rows };
+  return { lines, cols, rows, colorTag };
 }
 
 /** Color-dominance pill finder (normalized) */
@@ -274,7 +314,7 @@ export default function ProjectsPage() {
       const innerH = rect.height - padY;
 
       const cols = Math.max(100, Math.floor(innerW / cw));
-      const rows = Math.max(48,  Math.floor(innerH / ch));
+      const rows = Math.max(48, Math.floor(innerH / ch));
 
       const t = ts * 0.001;
       const frame = imageToAsciiFrame(image, cols, rows, t);
@@ -316,23 +356,9 @@ export default function ProjectsPage() {
       const leftLines: string[] = [];
       const rightLines: string[] = [];
 
-      // pill masks (only bright glyphs kept)
-      const brightGlyph = ASCII_CHARSET[ASCII_CHARSET.length - 1] || "@";
-      const pillW = Math.max(6, Math.round(frame.cols * 0.03));
-      const pillH = Math.max(3, Math.round(frame.rows * 0.04));
-
-      const rPL = clamp(rCol - Math.round(pillW * 0.5), 0, frame.cols - 1);
-      const rPR = clamp(rPL + pillW, 0, frame.cols - 1);
-      const rPT = clamp(rRow - Math.round(pillH * 0.5), 0, frame.rows - 1);
-      const rPB = clamp(rPT + pillH, 0, frame.rows - 1);
-
-      const bPL = clamp(bCol - Math.round(pillW * 0.5), 0, frame.cols - 1);
-      const bPR = clamp(bPL + pillW, 0, frame.cols - 1);
-      const bPT = clamp(bRow - Math.round(pillH * 0.5), 0, frame.rows - 1);
-      const bPB = clamp(bPT + pillH, 0, frame.rows - 1);
-
-      const redPillLines: string[] = [];
-      const bluePillLines: string[] = [];
+      // Build arm masks and color overlays
+      const redLines: string[] = [];
+      const blueLines: string[] = [];
 
       for (let y = 0; y < frame.rows; y++) {
         const baseRow = frame.lines[y];
@@ -345,24 +371,24 @@ export default function ProjectsPage() {
           L += inLeft ? ch : " ";
           R += inRight ? ch : " ";
 
-          const inRP = x >= rPL && x <= rPR && y >= rPT && y <= rPB;
-          const inBP = x >= bPL && x <= bPR && y >= bPT && y <= bPB;
-          RP += inRP && (ch === "@" || ch === brightGlyph) ? "@" : " ";
-          BP += inBP && (ch === "@" || ch === brightGlyph) ? "@" : " ";
+          const tag = frame.colorTag[y * frame.cols + x];
+          RP += tag === 1 ? ch : " ";
+          BP += tag === 2 ? ch : " ";
         }
         leftLines.push(L);
         rightLines.push(R);
-        redPillLines.push(RP);
-        bluePillLines.push(BP);
+        redLines.push(RP);
+        blueLines.push(BP);
       }
 
       left.textContent = leftLines.join("\n");
       right.textContent = rightLines.join("\n");
 
-      // Show pill overlays ONLY for the active hand (mode) and while hovered
-      pillR.textContent = (mode === "hardware" && hover.red) ? redPillLines.join("\n") : "";
-      pillB.textContent = (mode === "software" && hover.blue) ? bluePillLines.join("\n") : "";
+      // Color overlays only when that hand is active/hovered
+      pillR.textContent = (mode === "hardware" && hover.red) ? redLines.join("\n") : "";
+      pillB.textContent = (mode === "software" && hover.blue) ? blueLines.join("\n") : "";
 
+      // Glitch on arms while close
       if (hover.red || glitch.red) { left.classList.add(styles.glitch); setGlitchVars(t, left); }
       else { left.classList.remove(styles.glitch); setRGB(left, 0, 0, 0, 0); }
 
@@ -450,7 +476,7 @@ export default function ProjectsPage() {
           <pre ref={leftRef}  className={`${styles.ascii} ${styles.overlay}`} />
           <pre ref={rightRef} className={`${styles.ascii} ${styles.overlay}`} />
 
-          {/* Colored pill overlays (only '@' kept) */}
+          {/* Colored pill overlays (cells tagged from image) */}
           <pre ref={pillRedRef}  className={`${styles.ascii} ${styles.pillRed}`} />
           <pre ref={pillBlueRef} className={`${styles.ascii} ${styles.pillBlue}`} />
 
@@ -468,7 +494,7 @@ export default function ProjectsPage() {
 
           {hint && <div className={styles.hint}>{hint}</div>}
 
-          {/* DEV: visible outlines for precise targeting */}
+          {/* Visible hotbox outlines */}
           <div
             className={`${styles.hotbox} ${styles.hotboxRed} ${styles.hotboxGlitch}`}
             style={{
