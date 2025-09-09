@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './Home.module.css';
 
 import Navbar from '@/components/navbar/Navbar';
@@ -9,10 +10,11 @@ import MoltenTitle from '@/components/branding/MoltenTitle';
 export default function Home() {
   const [showMolten, setShowMolten] = useState(false);
   const [reverseAscii, setReverseAscii] = useState(false);
+  const navigate = useNavigate();
 
-  // Section refs for navbar navigation
+  // Section refs for navbar navigation (Fitness/About still scroll; Projects routes out)
   const fitnessRef = useRef<HTMLDivElement | null>(null);
-  const projectsRef = useRef<HTMLDivElement | null>(null);
+  const projectsRef = useRef<HTMLDivElement | null>(null); // kept in case you still want an in-page section
   const aboutRef = useRef<HTMLDivElement | null>(null);
 
   // Fired by DreamsHero when the ASCII outline fully reveals
@@ -22,20 +24,27 @@ export default function Home() {
     setTimeout(() => setReverseAscii(true), 600);
   };
 
-  // Hook up Navbar buttons to page sections
+  // Hook up Navbar buttons
+  // - Projects: navigate to /projects (router)
+  // - Fitness/About: smooth-scroll to section
   const handleNavigate = (to: 'fitness' | 'projects' | 'about') => {
-    const node =
-      (to === 'fitness' && fitnessRef.current) ||
-      (to === 'projects' && projectsRef.current) ||
-      (to === 'about' && aboutRef.current);
-
-    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    switch (to) {
+      case 'projects':
+        navigate('/projects');
+        return;
+      case 'fitness':
+        fitnessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      case 'about':
+        aboutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+    }
   };
 
   return (
     <div className={styles.page}>
-      {/* Transparent, fixed, edge-to-edge navbar */}
-      <Navbar brand="medenijazbec.pro" onNavigate={handleNavigate} />
+      {/* Blurred, fixed, edge-to-edge navbar overlaying the scene */}
+      <Navbar overlay brand="medenijazbec.pro" onNavigate={handleNavigate} />
 
       {/* HERO */}
       <section className={styles.hero}>
@@ -60,10 +69,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PROJECTS (uses your ASCII badger as a visual) */}
+      {/* PROJECTS (still present visually on home if you want it) */}
       <section ref={projectsRef} id="projects" className={styles.badger}>
         <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Projects</h2>
+          <h2 className={styles.sectionTitle}>Projects (preview)</h2>
         </div>
         <AsciiBadger />
       </section>

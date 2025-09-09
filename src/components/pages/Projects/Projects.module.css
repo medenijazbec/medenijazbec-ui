@@ -1,7 +1,145 @@
-.page { color: var(--phosphor); background: var(--bg); min-height: 100vh; }
-.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-.h2 { font-size: 1.25rem; margin-bottom: .75rem; }
-.grid { display: grid; grid-template-columns: 1fr; gap: .75rem; }
-@media (min-width: 768px) { .grid { grid-template-columns: 1fr 1fr; } }
-.cardTitle { font-weight: 600; }
-.cardSub { opacity: .8; font-size: .9rem; }
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#071a14;
+  --phosphor:#00ff66;
+
+  --rgb-rx: 0px; --rgb-ry: 0px;
+  --rgb-bx: 0px; --rgb-by: 0px;
+}
+
+.page{
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--phosphor);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.main{
+  padding-top: var(--nav-height, 3rem);
+}
+
+/* ===== Stage (16:9, up to 1920×1080) ===== */
+.stage{
+  position: relative;
+  width: min(96vw, 1920px);
+  aspect-ratio: 16 / 9;
+  margin: 18px auto 12px auto;
+  border: 1px solid rgba(0,255,102,.18);
+  background: radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
+  overflow: hidden;
+}
+
+/* Base ASCII block */
+.ascii{
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 10px;
+  line-height: 1.02;
+  letter-spacing: 0em;
+  font-size: 16px;
+  white-space: pre;
+  color: var(--phosphor);
+  opacity: .94;
+  background: transparent;
+  user-select: none;
+  pointer-events: none;
+  text-rendering: optimizeSpeed;
+}
+
+/* Overlays used to isolate each arm (filled with spaces elsewhere) */
+.overlay{ z-index: 2; }
+
+/* Colored pill overlays (only '@' are written) */
+.pillRed{
+  z-index: 3;
+  color: #ff4d4d;
+  text-shadow: 0 0 6px rgba(255,0,0,.7), 0 0 18px rgba(255,0,0,.35);
+}
+.pillBlue{
+  z-index: 3;
+  color: #4db6ff;
+  text-shadow: 0 0 6px rgba(64,160,255,.7), 0 0 18px rgba(64,160,255,.35);
+}
+
+/* Glitch timewarp RGB effect applied to overlay pre blocks when active */
+.glitch{
+  text-shadow:
+    var(--rgb-rx) var(--rgb-ry) 0 rgba(255, 64, 64, 0.55),
+    var(--rgb-bx) var(--rgb-by) 0 rgba(64, 160, 255, 0.55);
+}
+
+/* Labels shown near the pills (hotspot-controlled) */
+.label{
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 6px 10px;
+  border: 1px solid rgba(0,255,102,.35);
+  background: rgba(7,26,20,.9);
+  box-shadow: 0 0 18px rgba(0,255,102,.35);
+  font-size: 13px;
+  z-index: 4;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.labelRed{ border-color: rgba(255,80,80,.6); box-shadow: 0 0 18px rgba(255,80,80,.25); }
+.labelBlue{ border-color: rgba(64,160,255,.6); box-shadow: 0 0 18px rgba(64,160,255,.25); }
+
+/* Tiny status hint in the corner */
+.hint{
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  font-size: 12px;
+  opacity: .85;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Small illustrative strip (optional) */
+.strip{
+  display: grid;
+  grid-auto-flow: column;
+  gap: 8px;
+  width: min(96vw, 1920px);
+  margin: 8px auto 24px auto;
+  opacity: .6;
+}
+.strip img{
+  height: 56px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: #000;
+}
+
+/* Hidden probe element for font metrics */
+.probe{
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font: inherit;
+  line-height: 1.02;
+  padding: 0;
+  margin: 0;
+}
+
+/* === Visible hotbox outlines (for precise targeting) === */
+.hotbox{
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.hotboxSwitch{ border: 1px solid rgba(0,255,102,.55); }
+.hotboxGlitch{
+  border: 1px dashed rgba(0,255,102,.28);
+  mix-blend-mode: screen;
+}
+
+.hotboxRed.hotboxSwitch{ border-color: rgba(255,80,80,.65); }
+.hotboxRed.hotboxGlitch{ border-color: rgba(255,80,80,.28); }
+
+.hotboxBlue.hotboxSwitch{ border-color: rgba(64,160,255,.65); }
+.hotboxBlue.hotboxGlitch{ border-color: rgba(64,160,255,.28); }
