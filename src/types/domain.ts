@@ -4,10 +4,30 @@ export type Id = string | number;
 export interface User { id: string; userName: string; email?: string; isAdmin?: boolean }
 
 
+export interface ProjectImage {
+  id?: number;
+  url: string;
+  alt?: string;
+  sortOrder?: number;
+}
+
 export interface Project {
-id: number; slug: string; title: string; summary?: string;
-description?: string; techStack?: unknown; liveUrl?: string; repoUrl?: string;
-featured: boolean; published: boolean; ownerUserId?: string; createdAt: string; updatedAt: string;
+  id: number;
+  slug: string;
+  title: string;
+  summary?: string;
+  description?: string;
+  techStack?: unknown;
+  liveUrl?: string;
+  repoUrl?: string;
+  featured: boolean;
+  published: boolean;
+  ownerUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+
+  kind: 'software' | 'hardware';    
+  images: ProjectImage[];           
 }
 
 

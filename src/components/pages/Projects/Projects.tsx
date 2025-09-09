@@ -7,6 +7,10 @@ import { ASCII_CHARSET } from "@/components/badger/badger.constants";
 import BADGER_DEFAULT from "@/assets/badger_default.png";
 import BADGER_HARDWARE from "@/assets/badger_hardware.png";
 import BADGER_SOFTWARE from "@/assets/badger_software.png";
+import SoftwareProj from "@/components/SoftwareProj/SoftwareProjects";
+import HardwareProj from "@/components/HardwareProj/HardwareProjects";
+import SoftwareProjects from "@/components/SoftwareProj/SoftwareProjects";
+import HardwareProjects from "@/components/HardwareProj/HardwareProjects";
 
 /* ────────────────────────── TUNE THIS ────────────────────────── */
 // Nudges the rendered ASCII image (not hotspots)
@@ -540,11 +544,15 @@ export default function ProjectsPage() {
           />
         </div>
 
-        <div className={styles.strip}>
-          <img src={BADGER_DEFAULT}  alt="Default"  title="Default" />
-          <img src={BADGER_HARDWARE} alt="Hardware" title="Hardware" />
-          <img src={BADGER_SOFTWARE} alt="Software" title="Software" />
-        </div>
+
+    {mode === "software" && <SoftwareProjects />}
+    {mode === "hardware" && <HardwareProjects />}
+
+
+
+
+
+
       </main>
     </div>
   );
