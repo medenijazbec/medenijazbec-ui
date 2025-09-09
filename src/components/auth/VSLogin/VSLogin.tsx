@@ -41,7 +41,7 @@ export default function VSLogin() {
   const [qs] = useSearchParams();
   const redirect = useMemo(() => qs.get("redirect") || "/admin/animgroups", [qs]);
 
-  const [email, setEmail] = useState(localStorage.getItem("hb_user_email") || "");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
@@ -59,7 +59,8 @@ export default function VSLogin() {
       localStorage.setItem("hb_token", res.token);
       const roles = rolesFrom(res);
       localStorage.setItem("hb_roles", roles.join(","));
-      if (res.user?.email || email) localStorage.setItem("hb_user_email", res.user?.email ?? email);
+      //do not looad in local storage retard
+      //if (res.user?.email || email) localStorage.setItem("hb_user_email", res.user?.email ?? email);
 
       navigate(redirect, { replace: true });
     } catch (err: any) {
