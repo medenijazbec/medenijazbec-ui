@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import styles from "./Navbar.module.css";
 import sunPng from "@/assets/sun.png";
 import moonPng from "@/assets/moon.png";
@@ -25,6 +26,10 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [color, setColor] = useState<ColorKey>("green");
 
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  // ===== Theme color hookup =====
   useEffect(() => {
     const { phosphor, outline } = COLOR_THEME[color];
     const root = document.documentElement;
@@ -32,10 +37,12 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
     root.style.setProperty("--outline-dark", outline);
   }, [color]);
 
+  // ===== Light/Dark =====
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   }, [dark]);
 
+  // ===== Close palette on outside click =====
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -47,6 +54,7 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
     return () => document.removeEventListener("click", onDoc);
   }, []);
 
+  // ===== Nav buttons (Fitness/Projects/About) =====
   const onClickNav = (key: "fitness"|"projects"|"about") => {
     setActive(key);
     onNavigate?.(key);
@@ -56,32 +64,92 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
     background: COLOR_THEME[color].phosphor
   }), [color]);
 
+  // ===== Hidden brand tap-to-unlock (/vs) =====
+  // Only counts when you're on "/". Else, clicking brand goes to home immediately.
+  const [tapCount, setTapCount] = useState(0);
+  const resetTimerRef = useRef<number | null>(null);
+
+  const resetCounterSoon = () => {
+    if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    // Reset silently after a short window of inactivity
+    resetTimerRef.current = window.setTimeout(() => {
+      setTapCount(0);
+      resetTimerRef.current = null;
+    }, 2500);
+  };
+
+  const onBrandClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    if (pathname !== "/") {
+      // From any non-home route, brand acts like "go home"
+      navigate("/", { replace: false });
+      return;
+    }
+
+    // On home, count taps silently; 10 taps → navigate to /vs
+    setTapCount((c) => {
+      const next = c + 1;
+      if (next >= 10) {
+        if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
+        // reset and go to secret login
+        setTimeout(() => setTapCount(0), 0);
+        navigate("/vs", { replace: true });
+        return 0;
+      }
+      resetCounterSoon();
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    // Cleanup timer on unmount
+    return () => {
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    };
+  }, []);
+
   return (
     <>
-      {/* Only render the spacer when NOT overlaying */}
       {!overlay && <div className={styles.bodyOffset} />}
 
       <nav className={styles.nav} aria-label="Top">
         <div className={styles.inner}>
-          <a className={styles.brand} href="#">
+          {/* Brand: Link visually, handled via onClick for stealth behavior */}
+          <Link
+            to="/"
+            className={styles.brand}
+            onClick={onBrandClick}
+            aria-label={brand}
+          >
             <span className={styles.brandIcon} aria-hidden="true" />
             {brand}
-          </a>
+          </Link>
 
           <div className={styles.right}>
             <div className={styles.links}>
+              {/* Explicit Home link */}
+              <Link className={styles.btn} to="/">Home</Link>
+
               <button
                 className={`${styles.btn} ${active==="fitness" ? styles.active : ""}`}
                 onClick={() => onClickNav("fitness")}
-              >Fitness</button>
+              >
+                Fitness
+              </button>
               <button
                 className={`${styles.btn} ${active==="projects" ? styles.active : ""}`}
                 onClick={() => onClickNav("projects")}
-              >Projects</button>
+              >
+                Projects
+              </button>
               <button
                 className={`${styles.btn} ${active==="about" ? styles.active : ""}`}
                 onClick={() => onClickNav("about")}
-              >About</button>
+              >
+                About
+              </button>
             </div>
 
             <div className={styles.tools}>

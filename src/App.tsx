@@ -5,6 +5,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from '@/components/pages/Home/Home';
 import Projects from '@/components/pages/Projects/Projects';
 import AnimGroupsPage from './components/admin/AnimGroups';
+import VGRegister from './components/auth/VGRegister/VGRegister';
+import VSLogin from './components/auth/VSLogin/VSLogin';
 
 // super-simple auth stub — replace with real logic later
 function useAuth() {
@@ -35,7 +37,8 @@ export default function App() {
 
         {/* Make /projects public so it doesn't bounce back to / */}
         <Route path="/projects" element={<Projects />} />
-
+        <Route path="/vg" element={<VGRegister />} />
+        <Route path="/vs" element={<VSLogin />} />
         {/* Keep admin-only area protected */}
         <Route
           path="/admin/animgroups"
