@@ -184,3 +184,13 @@
 .bodyOffset {
   height: var(--nav-height);
 }
+/* center area between brand and right tools */
+.center{
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none; /* so clicks pass through unless child wants them */
+}
+.center > * { pointer-events: auto; }
+.inner{ display:flex; align-items:center; justify-content:space-between; }

@@ -1,0 +1,11 @@
+.badge{
+  padding: 6px 10px;
+  border: 1px solid rgba(0,255,102,.35);
+  background: rgba(7,26,20,.72);
+  box-shadow: 0 0 14px rgba(0,255,102,.20);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--phosphor,#00ff66);
+  backdrop-filter: blur(4px);
+}
+.email{ opacity:.92 }

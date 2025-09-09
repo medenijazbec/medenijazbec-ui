@@ -4,6 +4,7 @@ import styles from "./Navbar.module.css";
 import sunPng from "@/assets/sun.png";
 import moonPng from "@/assets/moon.png";
 import githubPng from "@/assets/github.png";
+import AdminStatus from "@/components/admin/AdminStatus/AdminStatus";
 
 const COLOR_THEME = {
   green:  { phosphor:"#00ff66", outline:"#0e3b2c" },
@@ -126,6 +127,11 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
             <span className={styles.brandIcon} aria-hidden="true" />
             {brand}
           </Link>
+
+            {/* + center slot */}
+            <div className={styles.center}>
+              <AdminStatus />
+            </div>
 
           <div className={styles.right}>
             <div className={styles.links}>

@@ -1,0 +1,10 @@
+.page{ min-height:100vh; background:var(--bg,#071a14); color:var(--phosphor,#00ff66); }
+.main{ width:min(980px,94vw); margin: 80px auto; }
+.card{
+  border:1px solid rgba(0,255,102,.35);
+  background: rgba(7,26,20,.9);
+  box-shadow: 0 0 22px rgba(0,255,102,.25);
+  border-radius: 12px;
+  padding: 18px;
+}
+.email{ opacity:.95 }
