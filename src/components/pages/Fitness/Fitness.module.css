@@ -17,6 +17,14 @@
   padding: 1.25rem 0 2rem;
 }
 
+/* NEW: make this page wider */
+.pageWide .container{
+  width:min(1400px, 96vw);       /* bump the max width */
+}
+@media (min-width: 1600px){
+  .pageWide .container{ width:min(1600px, 95vw); } /* even wider on big screens */
+}
+
 .h1{ font-size:1.6rem; margin:.75rem 0 1rem; }
 .muted{ opacity:.9; font-size:.95rem; }
 

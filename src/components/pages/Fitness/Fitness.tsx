@@ -2,11 +2,10 @@ import React from 'react';
 import Navbar from '@/components/navbar/Navbar';
 import styles from './Fitness.module.css';
 import ShealthHistoryModule from './ShealthHistoryModule';
-import ShealthIso3D from './ShealthIso3D';
 
 export default function FitnessPage() {
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${styles.pageWide}`}> {/* add pageWide to widen container */}
       <Navbar overlay brand="medenijazbec.pro" />
       <main className={styles.main}>
         <div className={styles.container}>
@@ -22,8 +21,6 @@ export default function FitnessPage() {
             
           {/* All logic & rendering lives in the module */}
           <ShealthHistoryModule />
-
-          
         </div>
       </main>
     </div>
