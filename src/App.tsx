@@ -10,12 +10,17 @@ import VSLogin from "@/components/auth/VSLogin/VSLogin";
 import AdminShowcase from "@/components/admin/AdminShowcase/AdminShowcase";
 import ProjectsAdmin from "./components/admin/ProjectsAdmin/ProjectsAdmin";
 
+// 👇 NEW
+import AdminFitness from "@/components/admin/AdminFitness/AdminFitness";
+import FitnessPage from "@/components/pages/Fitness/Fitness";
+
 function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   const { isAuthed, roles } = useAuth();
   if (!isAuthed) return <Navigate to="/" replace />;
   if (props.role && !roles.includes(props.role)) return <Navigate to="/" replace />;
   return <>{props.children}</>;
 }
+
 export default function App() {
   return (
     <AuthProvider>
@@ -25,6 +30,8 @@ export default function App() {
 
           {/* Public */}
           <Route path="/projects" element={<Projects />} />
+          {/* public/user-visible fitness page */}
+          <Route path="/fitness" element={<FitnessPage />} />
           <Route path="/vg" element={<VGRegister />} />
           <Route path="/vs" element={<VSLogin />} />
 
@@ -35,9 +42,9 @@ export default function App() {
               <RequireAuth role="Admin">
                 <AdminShowcase />
               </RequireAuth>
-            }                    />
-
-            <Route
+            }
+          />
+          <Route
             path="/admin/showcase"
             element={
               <RequireAuth role="Admin">
@@ -58,6 +65,15 @@ export default function App() {
             element={
               <RequireAuth role="Admin">
                 <AnimGroupsPage />
+              </RequireAuth>
+            }
+          />
+          {/* admin fitness page */}
+          <Route
+            path="/admin/fitness"
+            element={
+              <RequireAuth role="Admin">
+                <AdminFitness />
               </RequireAuth>
             }
           />

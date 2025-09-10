@@ -27,4 +27,6 @@ export const http = {
   put: async <T>(url: string, body?: any): ApiResult<T> => (await api.put<T>(url, body)).data,
   patch: async <T>(url: string, body?: any): ApiResult<T> => (await api.patch<T>(url, body)).data,
   del: async <T>(url: string): ApiResult<T> => (await api.delete<T>(url)).data,
+  postForm: async <T>(url: string, form: FormData): ApiResult<T> =>
+    (await api.post<T>(url, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data,
 }

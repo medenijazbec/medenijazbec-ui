@@ -135,12 +135,12 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
               {/* Explicit Home link */}
               <Link className={styles.btn} to="/">Home</Link>
 
-              <button
-                className={`${styles.btn} ${active==="fitness" ? styles.active : ""}`}
-                onClick={() => onClickNav("fitness")}
+              <Link
+                className={`${styles.btn} ${pathname.startsWith("/fitness") ? styles.active : ""}`}
+                to="/fitness"
               >
                 Fitness
-              </button>
+              </Link>
               <button
                 className={`${styles.btn} ${active==="projects" ? styles.active : ""}`}
                 onClick={() => onClickNav("projects")}
@@ -174,6 +174,12 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
                     to="/admin/animgroups"
                   >
                     Manage Anim Groups
+                  </Link>
+                  <Link
+                    className={`${styles.btn} ${pathname.startsWith("/admin/fitness") ? styles.active : ""}`}
+                    to="/admin/fitness"
+                  >
+                    Manage Fitness
                   </Link>
                 </>
               )}
