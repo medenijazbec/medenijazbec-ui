@@ -5,6 +5,7 @@ import sunPng from "@/assets/sun.png";
 import moonPng from "@/assets/moon.png";
 import githubPng from "@/assets/github.png";
 import AdminStatus from "@/components/admin/AdminStatus/AdminStatus";
+import { useAuth } from "../auth/AuthContext";
 
 const COLOR_THEME = {
   green:  { phosphor:"#00ff66", outline:"#0e3b2c" },
@@ -22,12 +23,15 @@ type Props = {
 };
 
 const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overlay = true }) => {
+  const { isAdmin } = useAuth();
+  
   const [active, setActive] = useState<"fitness"|"projects"|"about">("fitness");
   const [dark, setDark] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [color, setColor] = useState<ColorKey>("green");
 
   const { pathname } = useLocation();
+ 
   const navigate = useNavigate();
 
   // ===== Theme color hookup =====
@@ -156,6 +160,17 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
               >
                 About
               </button>
+              {isAdmin && (
+            <Link
+              className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`}
+              to="/admin/projects"
+            >
+              Manage Projects
+            </Link>
+          )}
+
+
+
             </div>
 
             <div className={styles.tools}>

@@ -8,6 +8,7 @@ import AnimGroupsPage from "@/components/admin/AnimGroups";
 import VGRegister from "@/components/auth/VGRegister/VGRegister";
 import VSLogin from "@/components/auth/VSLogin/VSLogin";
 import AdminShowcase from "@/components/admin/AdminShowcase/AdminShowcase";
+import ProjectsAdmin from "./components/admin/ProjectsAdmin/ProjectsAdmin";
 
 function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   const { isAuthed, roles } = useAuth();
@@ -15,7 +16,6 @@ function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   if (props.role && !roles.includes(props.role)) return <Navigate to="/" replace />;
   return <>{props.children}</>;
 }
-
 export default function App() {
   return (
     <AuthProvider>
@@ -34,6 +34,22 @@ export default function App() {
             element={
               <RequireAuth role="Admin">
                 <AdminShowcase />
+              </RequireAuth>
+            }                    />
+
+            <Route
+            path="/admin/showcase"
+            element={
+              <RequireAuth role="Admin">
+                <AdminShowcase />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/projects"
+            element={
+              <RequireAuth role="Admin">
+                <ProjectsAdmin />
               </RequireAuth>
             }
           />

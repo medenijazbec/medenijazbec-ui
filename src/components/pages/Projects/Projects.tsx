@@ -7,8 +7,6 @@ import { ASCII_CHARSET } from "@/components/badger/badger.constants";
 import BADGER_DEFAULT from "@/assets/badger_default.png";
 import BADGER_HARDWARE from "@/assets/badger_hardware.png";
 import BADGER_SOFTWARE from "@/assets/badger_software.png";
-import SoftwareProj from "@/components/SoftwareProj/SoftwareProjects";
-import HardwareProj from "@/components/HardwareProj/HardwareProjects";
 import SoftwareProjects from "@/components/SoftwareProj/SoftwareProjects";
 import HardwareProjects from "@/components/HardwareProj/HardwareProjects";
 
@@ -208,6 +206,8 @@ export default function ProjectsPage() {
   const pillBlueRef = useRef<HTMLPreElement | null>(null);
 
   const [mode, setMode] = useState<Mode>("default");
+  const [locked, setLocked] = useState<Mode | null>(null); // ← lock after click
+
   const [imgs, setImgs] = useState<{ default: HTMLImageElement; hardware: HTMLImageElement; software: HTMLImageElement } | null>(null);
   const [centersMap, setCentersMap] = useState<{ default: PillCenters; hardware: PillCenters; software: PillCenters } | null>(null);
 
@@ -395,7 +395,7 @@ export default function ProjectsPage() {
       pillR.textContent = redLines.join("\n");
       pillB.textContent = blueLines.join("\n");
 
-      // Glitch on arms while near their tight boxes
+      // Glitch on arms while near their tight boxes OR when pulsing
       if (hover.red || glitch.red) { left.classList.add(styles.glitch); setGlitchVars(t, left); }
       else { left.classList.remove(styles.glitch); setRGB(left, 0, 0, 0, 0); }
 
@@ -407,7 +407,7 @@ export default function ProjectsPage() {
     return () => { stop = true; cancelAnimationFrame(raf); ro.disconnect(); };
   }, [imgs, centersMap, mode, hover.red, hover.blue, glitch.red, glitch.blue]);
 
-  // Hover → SMALL RECTANGULAR HITBOXES (hard-coded centers) to switch scenes + glitch
+  // Hover → SMALL RECTANGULAR HITBOXES (hard-coded centers). When locked, keep locked mode.
   useEffect(() => {
     if (!wrapRef.current) return;
     const el = wrapRef.current;
@@ -426,7 +426,7 @@ export default function ProjectsPage() {
       const nearR = insideBox(nx, ny, r.x, r.y, SWITCH_BOX.w + GLITCH_GROW * 2, SWITCH_BOX.h + GLITCH_GROW * 2);
       const nearB = insideBox(nx, ny, b.x, b.y, SWITCH_BOX.w + GLITCH_GROW * 2, SWITCH_BOX.h + GLITCH_GROW * 2);
 
-      const nextMode: Mode = overR ? "hardware" : overB ? "software" : "default";
+      const nextMode: Mode = locked ?? (overR ? "hardware" : overB ? "software" : "default");
       setMode(nextMode);
 
       setHover({ red: overR, blue: overB });
@@ -436,7 +436,7 @@ export default function ProjectsPage() {
     function onLeave() {
       setHover({ red: false, blue: false });
       setGlitch({ red: false, blue: false });
-      setMode("default");
+      if (!locked) setMode("default");
     }
 
     el.addEventListener("mousemove", onMove);
@@ -445,6 +445,18 @@ export default function ProjectsPage() {
       el.removeEventListener("mousemove", onMove);
       el.removeEventListener("mouseleave", onLeave);
     };
+  }, [locked]);
+
+  // Esc to unlock
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLocked(null);
+        setMode("default");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // Label absolute positions (follow hard-coded hotspots)
@@ -464,12 +476,38 @@ export default function ProjectsPage() {
     return () => ro.disconnect();
   }, []);
 
-  const showHardwareLabel = mode === "hardware" && hover.red;
-  const showSoftwareLabel = mode === "software" && hover.blue;
-  const hint = useMemo(
-    () => (showHardwareLabel ? "Hardware" : showSoftwareLabel ? "Software" : ""),
-    [showHardwareLabel, showSoftwareLabel]
-  );
+  // Labels show when hovering OR when locked on that side
+  const showHardwareLabel = mode === "hardware" && (hover.red || locked === "hardware");
+  const showSoftwareLabel = mode === "software" && (hover.blue || locked === "software");
+
+  // Hint text (also explains unlock)
+  const hint = useMemo(() => {
+    if (locked === "hardware") return "Hardware — click the red box again to unlock (Esc also works)";
+    if (locked === "software") return "Software — click the blue box again to unlock (Esc also works)";
+    return showHardwareLabel ? "Hardware" : showSoftwareLabel ? "Software" : "";
+  }, [locked, showHardwareLabel, showSoftwareLabel]);
+
+  // click-to-toggle lock + short glitch pulse
+  const pulseGlitch = (side: "red" | "blue", ms = 900) => {
+    setGlitch((g) => ({ ...g, [side]: true }));
+    window.setTimeout(() => setGlitch((g) => ({ ...g, [side]: false })), ms);
+  };
+
+  const toggleLock = (target: Mode, side: "red" | "blue") => {
+    if (locked === target) {
+      // unlock
+      setLocked(null);
+      setMode("default");
+      return;
+    }
+    // lock to target
+    setLocked(target);
+    setMode(target);
+    pulseGlitch(side);
+  };
+
+  const onClickRed = () => toggleLock("hardware", "red");
+  const onClickBlue = () => toggleLock("software", "blue");
 
   return (
     <div className={styles.page}>
@@ -487,14 +525,20 @@ export default function ProjectsPage() {
           <pre ref={pillRedRef}  className={`${styles.ascii} ${styles.pillRed}`} />
           <pre ref={pillBlueRef} className={`${styles.ascii} ${styles.pillBlue}`} />
 
-          {/* Labels — only for active/hovered hand */}
+          {/* Labels — also visible while locked */}
           {showHardwareLabel && labelPos.red && (
-            <div className={`${styles.label} ${styles.labelRed}`} style={{ left: labelPos.red.left, top: labelPos.red.top }}>
+            <div
+              className={`${styles.label} ${styles.labelRed}`}
+              style={{ left: labelPos.red.left, top: labelPos.red.top }}
+            >
               Hardware
             </div>
           )}
           {showSoftwareLabel && labelPos.blue && (
-            <div className={`${styles.label} ${styles.labelBlue}`} style={{ left: labelPos.blue.left, top: labelPos.blue.top }}>
+            <div
+              className={`${styles.label} ${styles.labelBlue}`}
+              style={{ left: labelPos.blue.left, top: labelPos.blue.top }}
+            >
               Software
             </div>
           )}
@@ -519,8 +563,13 @@ export default function ProjectsPage() {
               top: `${HOTSPOTS.red.y * 100}%`,
               width: `${SWITCH_BOX.w * 100}%`,
               height: `${SWITCH_BOX.h * 100}%`,
+              pointerEvents: "auto",
+              cursor: "pointer",
             }}
-            aria-hidden
+            role="button"
+            aria-label="Explore Hardware"
+            onClick={onClickRed}
+            title="Explore Hardware"
           />
           <div
             className={`${styles.hotbox} ${styles.hotboxBlue} ${styles.hotboxGlitch}`}
@@ -539,20 +588,19 @@ export default function ProjectsPage() {
               top: `${HOTSPOTS.blue.y * 100}%`,
               width: `${SWITCH_BOX.w * 100}%`,
               height: `${SWITCH_BOX.h * 100}%`,
+              pointerEvents: "auto",
+              cursor: "pointer",
             }}
-            aria-hidden
+            role="button"
+            aria-label="Explore Software"
+            onClick={onClickBlue}
+            title="Explore Software"
           />
         </div>
 
-
-    {mode === "software" && <SoftwareProjects />}
-    {mode === "hardware" && <HardwareProjects />}
-
-
-
-
-
-
+        {/* Only render project lists after a click lock */}
+        {locked === "software" && <SoftwareProjects />}
+        {locked === "hardware" && <HardwareProjects />}
       </main>
     </div>
   );

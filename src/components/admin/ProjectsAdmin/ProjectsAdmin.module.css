@@ -1,0 +1,74 @@
+:root{
+  --phosphor: #0f0;
+  --ink: #0a1511;
+}
+
+/* same page shell as AdminShowcase */
+.page{ min-height:100vh; background:var(--bg,#071a14); color:var(--phosphor,#00ff66); }
+.main{ width:min(980px,94vw); margin: 80px auto; }
+
+.wrap{
+  padding: 18px 16px 32px;
+  max-width: 980px; margin: 0 auto;
+  color: var(--phosphor);
+}
+:root { --font-sans: "Roboto", sans-serif; }
+.wrap { font-family: var(--font-sans); }
+.header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin-bottom:16px;
+}
+.header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin-bottom:16px;
+}
+.title{
+  margin:0; font-size:22px; letter-spacing:.02em;
+}
+.tools{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.select{
+  background:transparent; color:var(--phosphor);
+  border:1px solid rgba(0,255,102,.35); padding:8px; border-radius:0;
+}
+.btn{
+  background:transparent; color:var(--phosphor);
+  border:1px solid rgba(0,255,102,.5); padding:8px 10px; cursor:pointer;
+}
+.btn:hover{ border-color: rgba(0,255,102,.8); }
+
+.list{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+.row{
+  display:grid; grid-template-columns: 1fr auto; gap:10px;
+  padding:10px; border:1px solid rgba(0,255,102,.2);
+  background: rgba(0, 20, 12, .55);
+}
+.rowL{}
+.rowTitle{ font-weight:600; letter-spacing:.01em; }
+.rowSub{ opacity:.85; font-size:13px; }
+.rowR{ display:flex; gap:8px; align-items:center; }
+
+.empty{
+  opacity:.85; padding:16px; border:1px dashed rgba(0,255,102,.25); text-align:center;
+}
+
+.editor{
+  border:1px solid rgba(0,255,102,.35);
+  background: rgba(0, 20, 12, .35);
+  padding:12px; display:flex; flex-direction:column; gap:14px;
+}
+.grid{
+  display:grid; gap:10px;
+  grid-template-columns: 140px 1fr;
+  align-items:center;
+}
+.label{ font-size:13px; opacity:.9; }
+.input, .area{
+  width:100%; background:transparent; color:var(--phosphor);
+  border:1px solid rgba(0,255,102,.35); padding:8px; border-radius:0; font-size:14px;
+}
+.area{ min-height:120px; resize:vertical; }
+
+.gallery{ display:flex; flex-direction:column; gap:8px; }
+.imgRow{ display:grid; grid-template-columns: 1fr 1fr 100px auto; gap:8px; }
+
+.actions{ display:flex; gap:8px; justify-content:flex-end; }
