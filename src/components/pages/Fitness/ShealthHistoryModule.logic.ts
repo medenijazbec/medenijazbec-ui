@@ -1,4 +1,3 @@
-// src/components/pages/Fitness/ShealthHistoryModule.logic.ts
 import { useEffect, useMemo, useState } from "react";
 import { http } from "@/api/api";
 import { env } from "@/lib/env";
@@ -32,7 +31,13 @@ export function useShealthHistory() {
     const to = new Date().toISOString().slice(0, 10);
 
     http.get<FitnessRow[]>("/api/fitness/daily", { userId: uid, from, to })
-      .then(all => setRows((all ?? []).filter(r => r.day !== "1970-01-01")))
+      .then(all =>
+        setRows(
+          (all ?? [])
+            .filter(r => r.day !== "1970-01-01")
+            .sort((a,b) => a.day.localeCompare(b.day))
+        )
+      )
       .catch((e:any) => setError(e?.response?.data?.detail ?? e?.message ?? "Failed to load."))
       .finally(() => setLoading(false));
   }, [uid]);
@@ -40,12 +45,12 @@ export function useShealthHistory() {
   const months = useMemo(() => {
     const map = new Map<string, FitnessRow[]>();
     for (const r of rows) {
-      const ym = r.day.slice(0, 7);
+      const ym = r.day.slice(0,7);
       if (!map.has(ym)) map.set(ym, []);
       map.get(ym)!.push(r);
     }
     return Array.from(map.entries())
-      .sort((a,b) => a[0] < b[0] ? -1 : 1)
+      .sort((a,b) => a[0].localeCompare(b[0]))
       .map(([ym, items]) => {
         let totalSteps = 0, totalKm = 0, bestSteps = 0, bestDist = 0;
         for (const it of items) {
@@ -59,9 +64,9 @@ export function useShealthHistory() {
           ym,
           items: items.sort((a,b)=>a.day.localeCompare(b.day)),
           totalSteps,
-          totalKm: Math.round(totalKm * 100) / 100,
+          totalKm: Math.round(totalKm*100)/100,
           bestSteps,
-          bestDist
+          bestDist,
         };
       });
   }, [rows]);

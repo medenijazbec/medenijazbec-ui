@@ -1,303 +1,268 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useShealthHistory } from "./ShealthHistoryModule.logic";
 import styles from "./ShealthHistoryModule.module.css";
+import { useShealthHistory, type FitnessRow } from "./ShealthHistoryModule.logic";
+
+// We use ApexCharts directly so it works without extra React wrappers
+// npm i apexcharts
+import ApexCharts, { type ApexOptions } from "apexcharts";
 
 type Metric = "steps" | "distance";
-type Mode = "overview" | "zoom";
+const RANGES = [30, 60, 90, 180, 365] as const;
 
-const ShealthHistoryModule: React.FC = () => {
-  const { months, extremes, loading, error } = useShealthHistory();
+function dateToUTC(d: Date) { return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
+function isoUTC(d: Date)     { return new Date(dateToUTC(d)); }
+
+function daysBetween(a: Date, b: Date) {
+  return Math.round((dateToUTC(b) - dateToUTC(a)) / 86400000);
+}
+function addDays(d: Date, n: number) {
+  const x = new Date(d); x.setUTCDate(x.getUTCDate() + n); return x;
+}
+
+export default function ShealthHistoryModule() {
+  const { rows, months, extremes, loading, error } = useShealthHistory();
+
   const [metric, setMetric] = useState<Metric>("steps");
+  const [range, setRange]   = useState<number | "all">(365);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [size, setSize] = useState({ w: 800, h: 320 });
-  const [hoverX, setHoverX] = useState<number | null>(null);
-  const [mode, setMode] = useState<Mode>("overview");
+  // build a continuous per-day series for the selected range
+  const { seriesDaily, seriesAvg, from, to, monthLines, yearLines } = useMemo(() => {
+    const result = {
+      seriesDaily: [] as { x: number; y: number | null }[],
+      seriesAvg: [] as { x: number; y: number | null }[],
+      from: null as Date | null,
+      to: null as Date | null,
+      monthLines: [] as number[],
+      yearLines: [] as number[],
+    };
 
-  // keep track of the currently zoomed month index
-  const [zoomMonthIdx, setZoomMonthIdx] = useState<number | null>(null);
+    if (!rows.length) return { ...result, from: null, to: null };
 
-  // resize observer
+    // map by date for quick lookup
+    const map = new Map<string, FitnessRow>();
+    for (const r of rows) map.set(r.day, r);
+
+    const latest = isoUTC(new Date());         // today (UTC, 00:00)
+    let earliest = isoUTC(new Date(rows[0].day + "T00:00:00Z"));
+    for (const r of rows) {
+      const d = isoUTC(new Date(r.day + "T00:00:00Z"));
+      if (d < earliest) earliest = d;
+    }
+
+    // apply selected range
+    const to  = latest;
+    const from = range === "all"
+      ? earliest
+      : addDays(to, -Math.max(0, (range as number) - 1));
+
+    // fill every day (show all days)
+    const values: number[] = [];
+    const points: { x:number; y:number }[] = [];
+
+    let d = new Date(from);
+    while (dateToUTC(d) <= dateToUTC(to)) {
+      const key = d.toISOString().slice(0, 10);
+      const rec = map.get(key);
+      const val = metric === "steps"
+        ? Math.max(0, Number(rec?.steps ?? 0))
+        : Math.max(0, Number(rec?.distanceKm ?? 0));
+      const x = dateToUTC(d);
+      values.push(val);
+      points.push({ x, y: val });
+      d = addDays(d, 1);
+    }
+
+    // 7d moving average (for the second series)
+    const avg: { x:number; y:number }[] = [];
+    let sum = 0;
+    const win = 7;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= win) sum -= values[i - win];
+      const y = i >= win - 1 ? +(sum / win).toFixed(metric === "steps" ? 0 : 2) : null;
+      avg.push({ x: points[i].x, y: y as any });
+    }
+
+    // month and year split lines
+    const monthsXs: number[] = [];
+    const yearsXs: number[] = [];
+    const mStart = isoUTC(new Date(from));
+    mStart.setUTCDate(1);
+    while (mStart <= to) {
+      const x = dateToUTC(mStart);
+      monthsXs.push(x);
+      if (mStart.getUTCMonth() === 0) yearsXs.push(x);
+      // next month
+      mStart.setUTCMonth(mStart.getUTCMonth() + 1);
+    }
+
+    result.seriesDaily = points;
+    result.seriesAvg = avg;
+    result.from = from;
+    result.to = to;
+    result.monthLines = monthsXs;
+    result.yearLines = yearsXs;
+    return result;
+  }, [rows, metric, range]);
+
+  // ---------------- ApexCharts ----------------
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<ApexCharts | null>(null);
+
+  // Make colors align with your theme
+  const COLOR_PRIMARY = "#00ff66";  // phosphor
+  const COLOR_AVG     = "#7ef2b7";  // lighter
+
+  const buildOptions = (): ApexOptions => ({
+    chart: {
+      type: "area",
+      height: "100%",
+      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue'",
+      toolbar: { show: false },
+      foreColor: "#aaf5d0",
+      animations: { enabled: false },
+      zoom: { enabled: false },
+      background: "transparent",
+    },
+    stroke: { width: 3, curve: "smooth" },
+    colors: [COLOR_PRIMARY, COLOR_AVG],
+    fill: {
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 0.35,
+        opacityFrom: 0.35,
+        opacityTo: 0.02,
+        stops: [0, 92, 100],
+      },
+    },
+    grid: {
+      show: true,
+      borderColor: "rgba(16,185,129,0.22)",
+      strokeDashArray: 4,
+      padding: { left: 8, right: 8, top: 8, bottom: 4 },
+    },
+    legend: { show: true, labels: { colors: "#b6ffe0" } },
+    tooltip: {
+      enabled: true,
+      shared: true,
+      x: { format: "yyyy-MM-dd" },
+      theme: "dark",
+      y: {
+        formatter: (val: number | null) => {
+          if (val == null) return "";
+          return metric === "steps"
+            ? `${Math.round(val).toLocaleString()} steps`
+            : `${val.toLocaleString(undefined,{maximumFractionDigits:2})} km`;
+        },
+      },
+    },
+     dataLabels: { enabled: false },    // 🔕 added
+  markers: { size: 0, hover: { size: 0 } }, // 🔕 added
+    xaxis: {
+      type: "datetime",
+      labels: {
+        datetimeUTC: false,
+        style: { colors: "#aef5d4" },
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      tooltip: { enabled: false },
+      tickAmount: 8,
+    },
+    yaxis: {
+      labels: {
+        style: { colors: "#aef5d4" },
+        formatter: (v) =>
+          metric === "steps" ? Math.round(v).toLocaleString() : v.toFixed(1),
+      },
+    },
+    annotations: {
+      xaxis: [
+        // month separators (thin dashed)
+        ...monthLines.map((x) => ({
+          x,
+          strokeDashArray: 4,
+          borderColor: "rgba(0,255,102,0.22)",
+        })),
+        // year separators (thicker)
+        ...yearLines.map((x) => ({
+          x,
+          borderColor: "rgba(0,255,102,0.45)",
+          strokeDashArray: 0,
+          label: {
+            text: new Date(x).getUTCFullYear().toString(),
+            borderColor: "rgba(0,255,102,0.25)",
+            style: {
+              color: "#c7ffe5",
+              background: "rgba(7,26,20,0.9)",
+              fontSize: "11px",
+            },
+            orientation: "vertical",
+          },
+        })),
+      ],
+    },
+    series: [
+      { name: metric === "steps" ? "Daily steps" : "Daily distance (km)", data: seriesDaily },
+      { name: metric === "steps" ? "7-day avg"   : "7-day avg (km)",      data: seriesAvg   },
+    ],
+  });
+
+  // init & update
   useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const cr = e.contentRect;
-        setSize({ w: Math.max(300, cr.width), h: 320 });
-      }
-    });
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
+    if (!elRef.current) return;
+    if (!chartRef.current) {
+      chartRef.current = new ApexCharts(elRef.current, buildOptions());
+      chartRef.current.render();
+    } else {
+      chartRef.current.updateOptions(buildOptions(), false, true);
+    }
+  }, [seriesDaily, seriesAvg, monthLines, yearLines, metric]); // eslint-disable-line
+
+  useEffect(() => {
+    // clean up on unmount
+    return () => { chartRef.current?.destroy(); chartRef.current = null; };
   }, []);
 
-  // ESC to go back to overview
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMode("overview");
-        setZoomMonthIdx(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const monthCount = months.length;
-  const padL = 36, padR = 10, padT = 10, padB = 22;
-  const W = size.w, H = size.h;
-  const innerW = Math.max(0, W - padL - padR);
-  const innerH = Math.max(0, H - padT - padB);
-  const monthW = monthCount > 0 ? innerW / monthCount : innerW;
-
-  const maxMonthly = useMemo(() => {
-    if (!months.length) return 1;
-    return Math.max(
-      ...months.map((m) => (metric === "steps" ? m.totalSteps : m.totalKm))
-    );
-  }, [months, metric]);
-
-  const yScaleMonthly = (v: number) => innerH * (v / Math.max(1, maxMonthly));
-
-  // Which month is under the cursor (based on X)
-  const hoveredMonthIdx = useMemo(() => {
-    if (hoverX == null || !months.length) return null;
-    const x = Math.min(Math.max(hoverX - padL, 0), innerW - 1);
-    return Math.min(monthCount - 1, Math.max(0, Math.floor(x / monthW)));
-  }, [hoverX, months, monthCount, monthW, innerW, padL]);
-
-  // Tooltip
-  const [tip, setTip] = useState<{ left: number; top: number; text: string } | null>(null);
-
-  const onMove = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setHoverX(x);
-
-    // Enter zoom mode on hover
-    if (mode !== "zoom") setMode("zoom");
-
-    // Update zoomed month to the one under cursor
-    if (hoveredMonthIdx != null) setZoomMonthIdx(hoveredMonthIdx);
-
-    // tip is set below (in an effect) once we know which bar/day we're over
-    setTip((prev) => (prev ? { ...prev, left: x, top: y - 10 } : null));
-  };
-  const onLeave = () => {
-    setHoverX(null);
-    setTip(null);
-    // Optional: return to overview on leave. If you want ESC-only, comment this out.
-    setMode("overview");
-    setZoomMonthIdx(null);
-  };
-
-  // Build the "zoom" model for the current month:
-  // - full width allocation for all days in that month
-  // - scale to that month's max day
-  const zoom = useMemo(() => {
-    if (mode !== "zoom" || zoomMonthIdx == null) return null;
-    const month = months[zoomMonthIdx];
-    if (!month) return null;
-
-    const days = month.items;
-    const lm = 6; // inner margin for nicer padding
-    const dayW = Math.max(1, (innerW - lm * 2) / Math.max(days.length, 1));
-    const maxDay = Math.max(
-      ...days.map((d) =>
-        metric === "steps" ? (d.steps ?? 0) : Number(d.distanceKm ?? 0)
-      ),
-      1
-    );
-    const scaleDay = (v: number) => (innerH - lm * 2) * (v / maxDay);
-
-    const bars = days.map((d, i) => {
-      const v = metric === "steps" ? (d.steps ?? 0) : Number(d.distanceKm ?? 0);
-      const bh = scaleDay(v);
-      const bx = padL + lm + i * dayW;
-      const by = padT + (innerH - lm - bh);
-      return {
-        key: d.day,
-        x: bx,
-        y: by,
-        w: Math.max(1, dayW - 1),
-        h: bh,
-        v,
-        date: d.day,
-      };
-    });
-
-    return {
-      ym: month.ym,
-      bars,
-      lm,
-      dayW,
-    };
-  }, [mode, zoomMonthIdx, months, innerW, innerH, padL, padT, metric]);
-
-  // Compute tooltip while moving (zoom mode shows per-day tips)
-  useEffect(() => {
-    if (!zoom || hoverX == null) {
-      setTip(null);
-      return;
-    }
-    const x = hoverX;
-    const firstX = zoom.bars.length ? zoom.bars[0].x : padL + zoom.lm;
-    const idx = Math.min(
-      Math.max(0, Math.floor((x - firstX) / Math.max(1, zoom.dayW))),
-      Math.max(0, zoom.bars.length - 1)
-    );
-    const b = zoom.bars[idx];
-    if (!b) {
-      setTip(null);
-      return;
-    }
-    const val =
-      metric === "steps"
-        ? `${(b.v as number).toLocaleString()} steps`
-        : `${(b.v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })} km`;
-    setTip({
-      left: b.x + b.w / 2,
-      top: b.y,
-      text: `${b.date}: ${val}`,
-    });
-  }, [zoom, hoverX, metric]);
-
-  const prettyYM = (ym: string) => {
-    const [y] = ym.split("-");
-    const month = new Date(`${ym}-01T00:00:00Z`).toLocaleString(undefined, {
-      month: "short",
-    });
-    return `${month} ${y}`;
-  };
+  // Pretty range note
+  const rangeNote = useMemo(() => {
+    if (!from || !to) return "";
+    const f = new Date(from).toLocaleDateString();
+    const t = new Date(to).toLocaleDateString();
+    const span = daysBetween(from, to) + 1;
+    return `${f} → ${t} • ${span.toLocaleString()} days`;
+  }, [from, to]);
 
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.row}>
           <label className={styles.meta}>Metric:&nbsp;</label>
-          <select
-            className={styles.select}
-            value={metric}
-            onChange={(e) => setMetric(e.target.value as Metric)}
-          >
+          <select className={styles.select} value={metric} onChange={(e)=>setMetric(e.target.value as Metric)}>
             <option value="steps">Steps</option>
             <option value="distance">Distance (km)</option>
           </select>
-          <div className={styles.meta}>
-            Hover a month to <b>zoom</b> (fills the whole chart). Press <b>Esc</b> to return.
-          </div>
+
+          <div className={styles.sep} />
+
+          <label className={styles.meta}>Range:&nbsp;</label>
+          <select
+            className={styles.select}
+            value={String(range)}
+            onChange={(e)=>setRange(e.target.value === "all" ? "all" : Number(e.target.value))}
+          >
+            {RANGES.map(d => <option key={d} value={d}>{d} days</option>)}
+            <option value="all">All</option>
+          </select>
+
+          {rangeNote && <div className={`${styles.meta} ${styles.note}`}>• {rangeNote}</div>}
         </div>
 
         {loading && <div className={styles.meta}>Loading…</div>}
         {error && <div className={styles.bad}>{error}</div>}
 
-        <div
-          className={styles.chartWrap}
-          ref={containerRef}
-          onMouseMove={onMove}
-          onMouseLeave={onLeave}
-          onMouseEnter={() => setTip(null)}
-        >
-          <svg role="img" aria-label="Samsung Health timeline with month zoom">
-            {/* OVERVIEW: monthly bars */}
-            <g
-              className={styles.overviewGroup}
-              style={{ opacity: mode === "overview" ? 1 : 0 }}
-            >
-              {months.map((m, i) => {
-                const v = metric === "steps" ? m.totalSteps : m.totalKm;
-                const h = yScaleMonthly(v);
-                const x = padL + i * monthW + 1;
-                const y = padT + (innerH - h);
-                const w = Math.max(1, monthW - 2);
-                return (
-                  <rect
-                    key={m.ym}
-                    x={x}
-                    y={y}
-                    width={w}
-                    height={h}
-                    className={styles.monthlyBar}
-                  />
-                );
-              })}
-
-              {/* Year ticks on the overview axis */}
-              <line
-                className={styles.axis}
-                x1={padL}
-                y1={padT + innerH}
-                x2={padL + innerW}
-                y2={padT + innerH}
-              />
-              {months.map((m, i) => {
-                const yy = m.ym.slice(0, 4);
-                const prev = i > 0 ? months[i - 1].ym.slice(0, 4) : null;
-                if (yy === prev) return null;
-                const x = padL + i * monthW;
-                return (
-                  <g key={yy} className={styles.yearTick}>
-                    <line x1={x} y1={padT + innerH} x2={x} y2={padT + innerH + 5} />
-                    <text x={x + 2} y={padT + innerH + 16}>
-                      {yy}
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-
-            {/* ZOOM: per-day bars for the month under the cursor, spanning full width */}
-            <g
-              className={styles.zoomGroup}
-              style={{ opacity: mode === "zoom" && zoom ? 1 : 0 }}
-            >
-              {/* background dim for context */}
-              <rect
-                x={padL}
-                y={padT}
-                width={innerW}
-                height={innerH}
-                className={styles.zoomBg}
-              />
-
-              {/* Day bars */}
-              {zoom?.bars.map((b) => (
-                <rect
-                  key={b.key}
-                  className={styles.dayBar}
-                  x={b.x}
-                  y={b.y}
-                  width={b.w}
-                  height={b.h}
-                />
-              ))}
-
-              {/* Month label */}
-              {zoom && (
-                <text x={padL + 6} y={padT + 14} className={styles.lensLabel}>
-                  {prettyYM(zoom.ym)}
-                </text>
-              )}
-
-              {/* X axis (month zoom) */}
-              <line
-                className={styles.axis}
-                x1={padL}
-                y1={padT + innerH}
-                x2={padL + innerW}
-                y2={padT + innerH}
-              />
-            </g>
-          </svg>
-
-          {tip && (
-            <div
-              className={styles.tooltip}
-              style={{ left: tip.left, top: tip.top }}
-            >
-              {tip.text}
-            </div>
-          )}
+        <div className={styles.chartCard}>
+          <div ref={elRef} className={styles.chart} />
         </div>
       </div>
 
@@ -306,27 +271,13 @@ const ShealthHistoryModule: React.FC = () => {
         <div className={styles.card}>
           <h3 className={styles.sectionTitle}>Top 10 — Most steps</h3>
           <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th style={{ textAlign: "right" }}>Steps</th>
-                <th style={{ textAlign: "right" }}>Distance (km)</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Date</th><th style={{textAlign:"right"}}>Steps</th><th style={{textAlign:"right"}}>Distance (km)</th></tr></thead>
             <tbody>
-              {extremes.bySteps.map((r) => (
+              {extremes.bySteps.map(r => (
                 <tr key={`s-${r.day}`}>
-                  <td className={styles.meta}>
-                    {new Date(r.day + "T00:00:00Z").toLocaleDateString()}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {(r.steps ?? 0).toLocaleString()}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {Number(r.distanceKm ?? 0).toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
+                  <td className={styles.meta}>{new Date(r.day+"T00:00:00Z").toLocaleDateString()}</td>
+                  <td style={{textAlign:"right"}}>{(r.steps ?? 0).toLocaleString()}</td>
+                  <td style={{textAlign:"right"}}>{Number(r.distanceKm ?? 0).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
                 </tr>
               ))}
             </tbody>
@@ -336,27 +287,13 @@ const ShealthHistoryModule: React.FC = () => {
         <div className={styles.card}>
           <h3 className={styles.sectionTitle}>Top 10 — Longest distance</h3>
           <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th style={{ textAlign: "right" }}>Distance (km)</th>
-                <th style={{ textAlign: "right" }}>Steps</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Date</th><th style={{textAlign:"right"}}>Distance (km)</th><th style={{textAlign:"right"}}>Steps</th></tr></thead>
             <tbody>
-              {extremes.byDist.map((r) => (
+              {extremes.byDist.map(r => (
                 <tr key={`d-${r.day}`}>
-                  <td className={styles.meta}>
-                    {new Date(r.day + "T00:00:00Z").toLocaleDateString()}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {Number(r.distanceKm ?? 0).toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {(r.steps ?? 0).toLocaleString()}
-                  </td>
+                  <td className={styles.meta}>{new Date(r.day+"T00:00:00Z").toLocaleDateString()}</td>
+                  <td style={{textAlign:"right"}}>{Number(r.distanceKm ?? 0).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
+                  <td style={{textAlign:"right"}}>{(r.steps ?? 0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -365,6 +302,4 @@ const ShealthHistoryModule: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export default ShealthHistoryModule;
+}

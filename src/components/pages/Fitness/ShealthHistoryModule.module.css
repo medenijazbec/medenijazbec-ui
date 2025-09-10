@@ -14,6 +14,8 @@
 }
 
 .row{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin:.25rem 0 .75rem; }
+.sep{ width:1px; height:20px; background:rgba(16,185,129,0.25); margin:0 .25rem; }
+
 .select{
   border:1px solid rgba(16,185,129,0.25);
   background:transparent;
@@ -21,9 +23,23 @@
   padding:.45rem .6rem;
   border-radius:8px;
 }
-
 .meta{ font-size:.86rem; opacity:.9; color:#aaf5d0; }
+.note{ white-space:nowrap; }
 .bad{ color:#ff6b6b }
+
+.chartCard{
+  width:100%;
+  height: 360px; /* grows with parent; feel free to tweak */
+  border:1px solid rgba(16,185,129,0.22);
+  border-radius:10px;
+  background: radial-gradient(1200px 380px at 18% 0%, rgba(0,255,120,.08), rgba(7,26,20,.92)),
+              rgba(7,26,20,0.88);
+  overflow:hidden;
+}
+.chart{
+  height:100%;
+  width:100%;
+}
 
 .grid2{
   display:grid;
@@ -41,60 +57,21 @@
   padding:.4rem .5rem; border-bottom:1px solid rgba(16,185,129,0.2);
 }
 
-.chartWrap{
-  position:relative;
-  width:100%;
-  height:320px;
-  cursor:crosshair;
-}
-svg{ display:block; width:100%; height:100%; }
-.axis{ opacity:.6; stroke:rgba(0,255,102,0.35); }
-.yearTick text{ font-size:11px; fill:rgba(0,255,102,0.85); }
-.yearTick line{ stroke:rgba(0,255,102,0.35); }
-
-/* OVERVIEW (monthly) */
-.overviewGroup{
-  transition:opacity .18s ease;
-  will-change:opacity;
-}
-.monthlyBar{
-  fill:rgba(0,255,102,0.55);
-  transition:opacity .18s ease;
-}
-
-/* ZOOM (per-day) */
-.zoomGroup{
-  transition:opacity .18s ease;
-  will-change:opacity;
-}
-.zoomBg{
-  fill:rgba(0,255,102,0.06);
-  stroke:rgba(0,255,102,0.2);
-  stroke-width:1px;
-}
-.dayBar{
-  fill:rgba(0,255,102,0.9);
-  transform-box:fill-box;
-  transform-origin:bottom left;
-  transition:transform .22s cubic-bezier(.2,.7,.2,1), opacity .18s ease;
-  will-change:transform, opacity;
-}
-.lensLabel{
-  fill:#c7ffe5;
-  font-size:12px;
-}
-
-.tooltip{
-  position:absolute;
-  pointer-events:none;
-  background:rgba(0,0,0,.75);
-  color:#d1ffe6;
-  border:1px solid rgba(0,255,102,.35);
-  border-radius:8px;
-  padding:.35rem .5rem;
-  font-size:.85rem;
-  transform:translate(-50%, -100%);
-  white-space:nowrap;
-}
-
 .sectionTitle{ margin:0 0 .5rem; font-weight:600; color:#b6ffe0; }
+
+/* ApexCharts tooltip dark fix (inherits our theme) */
+.apexcharts-tooltip{
+  background: rgba(0,0,0,.78) !important;
+  color:#d1ffe6 !important;
+  border:1px solid rgba(0,255,102,.35) !important;
+  border-radius:9px !important;
+}
+.apexcharts-tooltip-title{
+  background:rgba(0,0,0,.4) !important;
+  border-bottom:1px solid rgba(0,255,102,.2) !important;
+}
+.apexcharts-legend-text{ color:#b6ffe0 !important; }
+/* in ShealthHistoryModule.module.css */
+.apexcharts-datalabel {
+  display: none !important;
+}
