@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 
 import Home from "@/components/pages/Home/Home";
 import Projects from "@/components/pages/Projects/Projects";
-import AnimGroupsPage from "@/components/admin/AnimGroups";
+import AnimGroupsPage from "@/components/admin/AdminAnimGroups/AnimGroups";
 import VGRegister from "@/components/auth/VGRegister/VGRegister";
 import VSLogin from "@/components/auth/VSLogin/VSLogin";
 import AdminShowcase from "@/components/admin/AdminShowcase/AdminShowcase";

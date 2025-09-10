@@ -24,14 +24,13 @@ type Props = {
 
 const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overlay = true }) => {
   const { isAdmin } = useAuth();
-  
+
   const [active, setActive] = useState<"fitness"|"projects"|"about">("fitness");
   const [dark, setDark] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [color, setColor] = useState<ColorKey>("green");
 
   const { pathname } = useLocation();
- 
   const navigate = useNavigate();
 
   // ===== Theme color hookup =====
@@ -70,13 +69,11 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   }), [color]);
 
   // ===== Hidden brand tap-to-unlock (/vs) =====
-  // Only counts when you're on "/". Else, clicking brand goes to home immediately.
   const [tapCount, setTapCount] = useState(0);
   const resetTimerRef = useRef<number | null>(null);
 
   const resetCounterSoon = () => {
     if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
-    // Reset silently after a short window of inactivity
     resetTimerRef.current = window.setTimeout(() => {
       setTapCount(0);
       resetTimerRef.current = null;
@@ -87,18 +84,15 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
     e.preventDefault();
 
     if (pathname !== "/") {
-      // From any non-home route, brand acts like "go home"
       navigate("/", { replace: false });
       return;
     }
 
-    // On home, count taps silently; 10 taps → navigate to /vs
     setTapCount((c) => {
       const next = c + 1;
       if (next >= 10) {
         if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
         resetTimerRef.current = null;
-        // reset and go to secret login
         setTimeout(() => setTapCount(0), 0);
         navigate("/vs", { replace: true });
         return 0;
@@ -109,7 +103,6 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   };
 
   useEffect(() => {
-    // Cleanup timer on unmount
     return () => {
       if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
     };
@@ -132,10 +125,10 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
             {brand}
           </Link>
 
-            {/* + center slot */}
-            <div className={styles.center}>
-              <AdminStatus />
-            </div>
+          {/* center slot */}
+          <div className={styles.center}>
+            <AdminStatus />
+          </div>
 
           <div className={styles.right}>
             <div className={styles.links}>
@@ -160,17 +153,30 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
               >
                 About
               </button>
+
+              {/* ===== Admin links (only for admins) ===== */}
               {isAdmin && (
-            <Link
-              className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`}
-              to="/admin/projects"
-            >
-              Manage Projects
-            </Link>
-          )}
-
-
-
+                <>
+                  <Link
+                    className={`${styles.btn} ${pathname.startsWith("/admin/showcase") ? styles.active : ""}`}
+                    to="/admin/showcase"
+                  >
+                    Manage Showcase
+                  </Link>
+                  <Link
+                    className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`}
+                    to="/admin/projects"
+                  >
+                    Manage Projects
+                  </Link>
+                  <Link
+                    className={`${styles.btn} ${pathname.startsWith("/admin/animgroups") ? styles.active : ""}`}
+                    to="/admin/animgroups"
+                  >
+                    Manage Anim Groups
+                  </Link>
+                </>
+              )}
             </div>
 
             <div className={styles.tools}>
