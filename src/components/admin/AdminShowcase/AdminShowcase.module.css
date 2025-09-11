@@ -1,10 +1,23 @@
-.page{ min-height:100vh; background:var(--bg,#071a14); color:var(--phosphor,#00ff66); }
-.main{ width:min(980px,94vw); margin: 80px auto; }
-.card{
-  border:1px solid rgba(0,255,102,.35);
-  background: rgba(7,26,20,.9);
-  box-shadow: 0 0 22px rgba(0,255,102,.25);
-  border-radius: 12px;
-  padding: 18px;
-}
+
+
+.page{ 
+   font-family: "Roboto", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  min-height:100vh; background:var(--bg,#071a14); color:var(--phosphor,#00ff66); }
+  .page * { font-family: inherit; } /* make every child inherit Roboto */
+  .main{ width:min(1200px,96vw); margin: 80px auto; }
+.card{ border:1px solid rgba(0,255,102,.35); background: rgba(7,26,20,.9); box-shadow: 0 0 22px rgba(0,255,102,.25); border-radius: 12px; padding: 18px; }
 .email{ opacity:.95 }
+
+.nav{ display:flex; gap:10px; margin-bottom:16px; flex-wrap: wrap; }
+.tab{ border:1px solid rgba(0,255,102,.35); background:transparent; color:var(--phosphor); padding:8px 10px; border-radius:10px; cursor:pointer; }
+.tab[aria-current="page"]{ background:rgba(0,255,102,.08); box-shadow: 0 0 12px rgba(0,255,102,.25); }
+.wrap{ display:grid; gap:12px; }
+.grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
+.col-4{ grid-column: span 4; } .col-6{ grid-column: span 6; } .col-12{ grid-column: 1 / -1; }
+.table{ width:100%; border-collapse:collapse; font-size:.95rem; }
+.table th,.table td{ padding:.4rem .5rem; border-bottom:1px solid rgba(16,185,129,.2); }
+.kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.badge{ font-size:.85rem; opacity:.9 }
+.input, .btn { border:1px solid rgba(0,255,102,.35); background:transparent; color:var(--phosphor); padding:.45rem .6rem; border-radius:8px; }
+.btn { cursor:pointer; }
