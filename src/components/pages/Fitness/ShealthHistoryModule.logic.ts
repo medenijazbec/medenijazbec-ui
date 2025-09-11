@@ -7,6 +7,7 @@ export type FitnessRow = {
   day: string;                // "YYYY-MM-DD"
   steps?: number | null;
   distanceKm?: number | null;
+
 };
 
 export function useShealthHistory() {

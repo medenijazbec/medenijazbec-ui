@@ -29,47 +29,41 @@ export default function ShealthHistoryModule() {
   // ------- state -------
   const [metric, setMetric] = useState<Metric>("steps");
   const [hoverMonthIdx, setHoverMonthIdx] = useState<number>(-1);
-  const [hoverDay, setHoverDay] = useState<{ date: string; value: number } | null>(null);
+  const [hoverDay, setHoverDay] = useState<{ date: string; steps: number; km: number } | null>(null);
 
   // default to latest month
   useEffect(() => {
     if (months.length && hoverMonthIdx === -1) setHoverMonthIdx(months.length - 1);
   }, [months, hoverMonthIdx]);
 
-  // ------- main (monthly) series -------
-  const { mainSeries, avgSeries, yearMarkers, monthTicks } = useMemo(() => {
-    const series = months.map((m) => ({
-      x: tsFirstOfMonth(m.ym),
-      y: metric === "steps" ? Number(m.totalSteps || 0) : Number(m.totalKm || 0),
-    }));
+// ------- main (monthly) series (always steps + avg + km) -------
+const { stepsSeries, kmSeries, yearMarkers, monthTicks } = useMemo(() => {
+  const stepsSeries = months.map((m) => ({
+    x: tsFirstOfMonth(m.ym),
+    y: Number(m.totalSteps || 0),
+  }));
 
-    const avg: { x: number; y: number | null }[] = [];
-    let acc = 0;
-    for (let i = 0; i < series.length; i++) {
-      acc += Number(series[i].y || 0);
-      if (i >= 3) acc -= Number(series[i - 3].y || 0);
-      avg.push({
-        x: series[i].x,
-        y: i >= 2 ? +(acc / 3).toFixed(metric === "steps" ? 0 : 2) : null,
-      });
+  const kmSeries = months.map((m) => ({
+    x: tsFirstOfMonth(m.ym),
+    y: Number(m.totalKm || 0),
+  }));
+
+  const years: number[] = [];
+  const monthsXs: number[] = [];
+  if (stepsSeries.length) {
+    const first = new Date(stepsSeries[0].x);
+    const last = new Date(stepsSeries[stepsSeries.length - 1].x);
+    const cursor = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1));
+    while (cursor <= last) {
+      const x = Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), 1);
+      monthsXs.push(x);
+      if (cursor.getUTCMonth() === 0) years.push(x);
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
+  }
 
-    const years: number[] = [];
-    const monthsXs: number[] = [];
-    if (series.length) {
-      const first = new Date(series[0].x);
-      const last = new Date(series[series.length - 1].x);
-      const cursor = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1));
-      while (cursor <= last) {
-        const x = Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), 1);
-        monthsXs.push(x);
-        if (cursor.getUTCMonth() === 0) years.push(x);
-        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-      }
-    }
-
-    return { mainSeries: series, avgSeries: avg, yearMarkers: years, monthTicks: monthsXs };
-  }, [months, metric]);
+  return { stepsSeries, kmSeries, yearMarkers: years, monthTicks: monthsXs };
+}, [months]);
 
   // ------- right panel (per-day bars) -------
   const monthDays = useMemo(() => {
@@ -134,192 +128,221 @@ export default function ShealthHistoryModule() {
 
   // ---------- MAIN (Monthly) ----------
 
-  const mainOptions = useMemo<ApexOptions>(
-    () => ({
-      chart: {
-        type: "area",
-        height: "100%",
-        background: "transparent",
-        toolbar: { show: false },
-        foreColor: LABEL,
-        animations: { enabled: false },
-        events: {
-          dataPointMouseEnter: (_e, _ctx, cfg) => {
-            if (typeof cfg?.dataPointIndex === "number") setHoverMonthIdx(cfg.dataPointIndex);
-          },
+const mainOptions = useMemo<ApexOptions>(
+  () => ({
+    chart: {
+      type: "area", // use area so BOTH lines have a fade under them
+      height: "100%",
+      background: "transparent",
+      toolbar: { show: false },
+      foreColor: LABEL,
+      animations: { enabled: false },
+      events: {
+        dataPointMouseEnter: (_e, _ctx, cfg) => {
+          if (typeof cfg?.dataPointIndex === "number") setHoverMonthIdx(cfg.dataPointIndex);
         },
       },
-      colors: [C_PRIMARY, C_ACCENT],
-      stroke: { width: 3, curve: "smooth" },
-      fill: {
-        type: "gradient",
-        gradient: { shadeIntensity: 0.35, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 90, 100] },
+    },
+
+    // Steps = bright phosphor, KM = requested #7ef2b7
+    colors: [C_PRIMARY, "#7ef2b7"],
+
+    // Both lines smooth; equal weight
+    stroke: { width: [3, 3], curve: "smooth" },
+
+    // Gradient fade under BOTH series (slightly lighter for KM so it doesn’t swamp Steps)
+    fill: {
+      type: "gradient",
+      opacity: [0.22, 0.16],
+      gradient: {
+        shadeIntensity: 0.35,
+        opacityFrom: 0.28,
+        opacityTo: 0.06,
+        stops: [0, 90, 100],
       },
-      dataLabels: { enabled: false },
-      markers: { size: 0, hover: { size: 0 } },
-      grid: { borderColor: GRID, strokeDashArray: 4, padding: { left: 8, right: 8, top: 8, bottom: 4 } },
-      legend: { show: true, labels: { colors: LEGEND } },
+    },
 
-      // ✅ custom tooltip (no dayjs)
-      tooltip: {
-        shared: true,
-        theme: "dark",
-        x: { show: false },
-        custom: ({ dataPointIndex = 0, series = [], w }) => {
-          const x =
-            w?.globals?.seriesX?.[0]?.[dataPointIndex] ??
-            w?.globals?.seriesX?.[1]?.[dataPointIndex] ??
-            null;
+    dataLabels: { enabled: false },
+    markers: { size: 0, hover: { size: 0 } },
+    grid: { borderColor: GRID, strokeDashArray: 4, padding: { left: 8, right: 8, top: 8, bottom: 4 } },
+    legend: { show: true, labels: { colors: LEGEND } },
 
-          const d = x != null ? new Date(Number(x)) : null;
-          const title = d
-            ? d.toLocaleDateString(undefined, { year: "numeric", month: "short" })
-            : "";
+    // Tooltip for Steps + Km only
+    tooltip: {
+      shared: true,
+      theme: "dark",
+      x: { show: false },
+      custom: ({ dataPointIndex = 0, series = [], w }) => {
+        const x =
+          w?.globals?.seriesX?.[0]?.[dataPointIndex] ??
+          w?.globals?.seriesX?.[1]?.[dataPointIndex] ??
+          null;
 
-          const v0 = Number(series?.[0]?.[dataPointIndex] ?? NaN);
-          const v1 = Number(series?.[1]?.[dataPointIndex] ?? NaN);
+        const d = x != null ? new Date(Number(x)) : null;
+        const title = d ? d.toLocaleDateString(undefined, { year: "numeric", month: "short" }) : "";
 
-          const fmt = (val: number) =>
-            metric === "steps"
-              ? `${Math.round(val).toLocaleString()} steps`
-              : `${val.toFixed(2)} km`;
+        const stepsVal = Number(series?.[0]?.[dataPointIndex] ?? NaN);
+        const kmVal = Number(series?.[1]?.[dataPointIndex] ?? NaN);
 
-          const line1 = Number.isFinite(v0) ? `<div>${fmt(v0)}</div>` : "";
-          const line2 = Number.isFinite(v1) ? `<div>Avg: ${fmt(v1)}</div>` : "";
+        const line1 = Number.isFinite(stepsVal) ? `<div>${Math.round(stepsVal).toLocaleString()} steps</div>` : "";
+        const line2 = Number.isFinite(kmVal) ? `<div>${kmVal.toFixed(2)} km</div>` : "";
 
-          return `<div style="padding:.28rem .55rem">
-            <div><b>${title}</b></div>
-            ${line1}${line2}
-          </div>`;
+        return `<div style="padding:.28rem .55rem">
+          <div><b>${title}</b></div>
+          ${line1}${line2}
+        </div>`;
+      },
+    },
+
+    xaxis: {
+      type: "datetime",
+      labels: {
+        datetimeUTC: false,
+        style: { colors: LABEL },
+        formatter: (val: string | number) => {
+          const n = typeof val === "string" ? Number(val) : val;
+          const d = new Date(Number(n || 0));
+          return isNaN(d.getTime())
+            ? ""
+            : d.toLocaleDateString(undefined, { year: "2-digit", month: "short" });
         },
       },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      tickAmount: 8,
+    },
 
-      xaxis: {
-        type: "datetime",
+    // Two overlaid axes: left=Steps, right=Km
+    yaxis: [
+      {
+        title: { text: "Steps" },
         labels: {
-          datetimeUTC: false,
           style: { colors: LABEL },
-          formatter: (val: string | number) => {
-            const n = typeof val === "string" ? Number(val) : val;
-            const d = new Date(Number(n || 0));
-            return isNaN(d.getTime())
-              ? ""
-              : d.toLocaleDateString(undefined, { year: "2-digit", month: "short" });
-          },
+          formatter: (v) => Math.round(v).toLocaleString(),
         },
-        axisBorder: { show: false },
-        axisTicks: { show: false },
-        tickAmount: 8,
       },
-
-      yaxis: {
+      {
+        title: { text: "Km" },
+        opposite: true,
         labels: {
           style: { colors: LABEL },
-          formatter: (v) => (metric === "steps" ? Math.round(v).toLocaleString() : v.toFixed(1)),
+          formatter: (v) => Number(v).toFixed(1),
         },
       },
+    ],
 
-      annotations: {
-        xaxis: [
-          ...monthTicks.map((x) => ({ x, borderColor: "rgba(0,255,102,0.15)", strokeDashArray: 4 })),
-          ...yearMarkers.map((x) => ({
-            x,
-            borderColor: "rgba(0,255,102,0.4)",
-            strokeDashArray: 0,
-            label: {
-              text: new Date(x).getUTCFullYear().toString(),
-              borderColor: "rgba(0,255,102,0.25)",
-              style: { color: "#c7ffe5", background: "rgba(7,26,20,0.9)", fontSize: "11px" },
-              orientation: "vertical",
-            },
-          })),
-        ],
-      },
-
-      series: [
-        { name: metric === "steps" ? "Monthly steps" : "Monthly distance (km)", data: mainSeries },
-        { name: metric === "steps" ? "3-month avg" : "3-month avg (km)", data: avgSeries },
+    annotations: {
+      xaxis: [
+        ...monthTicks.map((x) => ({ x, borderColor: "rgba(0,255,102,0.15)", strokeDashArray: 4 })),
+        ...yearMarkers.map((x) => ({
+          x,
+          borderColor: "rgba(0,255,102,0.4)",
+          strokeDashArray: 0,
+          label: {
+            text: new Date(x).getUTCFullYear().toString(),
+            borderColor: "rgba(0,255,102,0.25)",
+            style: { color: "#c7ffe5", background: "rgba(7,26,20,0.9)", fontSize: "11px" },
+            orientation: "vertical",
+          },
+        })),
       ],
-      noData: { text: "No data" },
-    }),
-    [mainSeries, avgSeries, metric, monthTicks, yearMarkers]
-  );
+    },
+
+    // Exactly two series now; KM last so it renders on top
+    series: [
+      { name: "Monthly steps", type: "area", data: stepsSeries, yAxisIndex: 0 },
+      { name: "Monthly distance (km)", type: "area", data: kmSeries, yAxisIndex: 1 },
+    ],
+    noData: { text: "No data" },
+  }),
+  [stepsSeries, kmSeries, monthTicks, yearMarkers]
+);
+
+
+
+
 
   // ---------- MONTH (per-day bars) ----------
-  const monthOptions = useMemo<ApexOptions>(() => {
-    const ymTitle =
-      hoverMonthIdx >= 0 && hoverMonthIdx < months.length ? months[hoverMonthIdx].ym : "";
-    const categories = monthDays.map((d) => String(d.x || ""));
-    const values = monthDays.map((d) => Number(d.y || 0));
+const monthOptions = useMemo<ApexOptions>(() => {
+  const ymTitle =
+    hoverMonthIdx >= 0 && hoverMonthIdx < months.length ? months[hoverMonthIdx].ym : "";
+  const categories = monthDays.map((d) => String(d.x || ""));
+  const values = monthDays.map((d) => Number(d.y || 0));
 
-    return {
-      chart: {
-        type: "bar",
-        height: "100%",
-        background: "transparent",
-        toolbar: { show: false },
-        foreColor: LABEL,
-        animations: { enabled: false },
-        events: {
-          dataPointMouseEnter: (_e, _ctx, cfg) => {
-            const idx = cfg?.dataPointIndex ?? -1;
-            const iso = categories[idx] || "";
-            const val = values[idx] ?? 0;
-            if (iso) setHoverDay({ date: iso, value: val });
-          },
+  return {
+    chart: {
+      type: "bar",
+      height: "100%",
+      background: "transparent",
+      toolbar: { show: false },
+      foreColor: LABEL,
+      animations: { enabled: false },
+      events: {
+        dataPointMouseEnter: (_e, _ctx, cfg) => {
+          const idx = cfg?.dataPointIndex ?? -1;
+          const iso = categories[idx] || "";
+          if (iso && hoverMonthIdx >= 0 && hoverMonthIdx < months.length) {
+            const rec = months[hoverMonthIdx].items.find((d) => d.day === iso);
+            setHoverDay({
+              date: iso,
+              steps: Number(rec?.steps || 0),
+              km: Number(rec?.distanceKm || 0),
+            });
+          }
         },
       },
-      plotOptions: { bar: { columnWidth: "70%", borderRadius: 4 } },
-      colors: [C_PRIMARY],
-      dataLabels: { enabled: false },
-      grid: { borderColor: GRID, strokeDashArray: 4 },
-      tooltip: {
-        theme: "dark",
-        x: { show: false },
-        custom: ({ series, seriesIndex = 0, dataPointIndex = 0, w }) => {
-          const iso =
-            (w?.globals?.labels && w.globals.labels[dataPointIndex]) ||
-            (w?.globals?.categoryLabels && w.globals.categoryLabels[dataPointIndex]) ||
-            "";
-          const raw = series?.[seriesIndex]?.[dataPointIndex];
-          const val = Number(raw || 0);
-          const valueText =
-            metric === "steps"
-              ? `${Math.round(val).toLocaleString()} steps`
-              : `${val.toFixed(2)} km`;
-          const dayText = iso ? fmtDay(String(iso)) : "";
-          return `<div style="padding:.28rem .55rem">
-              <div>${dayText}</div>
-              <div><b>${valueText}</b></div>
-            </div>`;
-        },
+    },
+    plotOptions: { bar: { columnWidth: "70%", borderRadius: 4 } },
+    colors: [C_PRIMARY],
+    dataLabels: { enabled: false },
+    grid: { borderColor: GRID, strokeDashArray: 4 },
+    tooltip: {
+      theme: "dark",
+      x: { show: false },
+      custom: ({ series, seriesIndex = 0, dataPointIndex = 0, w }) => {
+        const iso =
+          (w?.globals?.labels && w.globals.labels[dataPointIndex]) ||
+          (w?.globals?.categoryLabels && w.globals.categoryLabels[dataPointIndex]) ||
+          "";
+        const raw = series?.[seriesIndex]?.[dataPointIndex];
+        const val = Number(raw || 0);
+        const valueText =
+          metric === "steps"
+            ? `${Math.round(val).toLocaleString()} steps`
+            : `${val.toFixed(2)} km`;
+        const dayText = iso ? fmtDay(String(iso)) : "";
+        return `<div style="padding:.28rem .55rem">
+            <div>${dayText}</div>
+            <div><b>${valueText}</b></div>
+          </div>`;
       },
-      xaxis: {
-        type: "category",
-        categories,
-        labels: {
-          rotate: -45,
-          formatter: (v: string) => {
-            if (!v) return "";
-            const d = new Date(v + "T00:00:00Z");
-            const day = d.getUTCDate();
-            return Number.isNaN(day) ? "" : String(day);
-          },
-          style: { colors: LABEL },
+    },
+    xaxis: {
+      type: "category",
+      categories,
+      labels: {
+        rotate: -45,
+        formatter: (v: string) => {
+          if (!v) return "";
+          const d = new Date(v + "T00:00:00Z");
+          const day = d.getUTCDate();
+          return Number.isNaN(day) ? "" : String(day);
         },
-        axisBorder: { show: false },
-        axisTicks: { show: false },
+        style: { colors: LABEL },
       },
-      yaxis: {
-        labels: {
-          style: { colors: LABEL },
-          formatter: (v) => (metric === "steps" ? Math.round(v).toLocaleString() : v.toFixed(1)),
-        },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: LABEL },
+        formatter: (v) => (metric === "steps" ? Math.round(v).toLocaleString() : v.toFixed(1)),
       },
-      series: [{ name: ymTitle || "Month", data: values }],
-      noData: { text: "No data" },
-    };
-  }, [monthDays, hoverMonthIdx, months, metric]);
+    },
+    series: [{ name: ymTitle || "Month", data: values }],
+    noData: { text: "No data" },
+  };
+}, [monthDays, hoverMonthIdx, months, metric]);
 
   // ---------- Sparkline ----------
   const spark = (data: number[]): ApexOptions => ({
@@ -617,44 +640,52 @@ export default function ShealthHistoryModule() {
               <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
             </div>
 
-            <div className={styles.calGrid}>
-              {calCells.cells.map((c, idx) => {
-                const clickable = !!c.iso;
-                const bg = c.steps != null ? colorForSteps(c.steps, calCells.max) : "transparent";
-                return (
-                  <div
-                    key={idx}
-                    className={`${styles.calCell} ${clickable ? styles.calCellHasData : styles.calCellEmpty}`}
-                    style={{ background: bg }}
-                    onMouseEnter={() => {
-                      if (clickable) {
-                        setHoverDay({
-                          date: c.iso!,
-                          value: months[hoverMonthIdx]?.items.find((d) => d.day === c.iso)?.steps || 0,
-                        });
-                      }
-                    }}
-                    onClick={() => {
-                      if (clickable) {
-                        setHoverDay({
-                          date: c.iso!,
-                          value: months[hoverMonthIdx]?.items.find((d) => d.day === c.iso)?.steps || 0,
-                        });
-                      }
-                    }}
-                    title={
-                      c.iso
-                        ? `${fmtDay(c.iso)} • ${(
-                            months[hoverMonthIdx]?.items.find((d) => d.day === c.iso)?.steps || 0
-                          ).toLocaleString()} steps`
-                        : ""
-                    }
-                  >
-                    {c.dayNum ?? ""}
-                  </div>
-                );
-              })}
-            </div>
+<div className={styles.calGrid}>
+  {calCells.cells.map((c, idx) => {
+    const clickable = !!c.iso;
+    const bg = c.steps != null ? colorForSteps(c.steps, calCells.max) : "transparent";
+    const rec =
+      clickable && hoverMonthIdx >= 0 && hoverMonthIdx < months.length
+        ? months[hoverMonthIdx].items.find((d) => d.day === c.iso)
+        : undefined;
+    const stepsVal = Number(rec?.steps || 0);
+    const kmVal = Number(rec?.distanceKm || 0);
+
+    return (
+      <div
+        key={idx}
+        className={`${styles.calCell} ${clickable ? styles.calCellHasData : styles.calCellEmpty}`}
+        style={{ background: bg }}
+        onMouseEnter={() => {
+          if (clickable) {
+            setHoverDay({
+              date: c.iso!,
+              steps: stepsVal,
+              km: kmVal,
+            });
+          }
+        }}
+        onClick={() => {
+          if (clickable) {
+            setHoverDay({
+              date: c.iso!,
+              steps: stepsVal,
+              km: kmVal,
+            });
+          }
+        }}
+        title={
+          c.iso
+            ? `${fmtDay(c.iso)} • ${stepsVal.toLocaleString()} steps • ${kmVal.toFixed(2)} km`
+            : ""
+        }
+      >
+        {c.dayNum ?? ""}
+      </div>
+    );
+  })}
+</div>
+
 
             <div className={styles.calLegend}>
               <span className={styles.meta}>Less</span>
@@ -670,27 +701,25 @@ export default function ShealthHistoryModule() {
           </div>
 
           {/* Day details */}
-          <div className={styles.card}>
-            <div className={styles.cardHead}>
-              <div className={styles.cardTitle}>Day</div>
-              <div className={styles.meta}>Hover a bar in the month chart</div>
-            </div>
-            <div className={styles.dayBox}>
-              {hoverDay ? (
-                <>
-                  <div className={styles.dayBig}>{fmtDay(hoverDay.date)}</div>
-                  <div className={styles.dayWeek}>{weekday(hoverDay.date)}</div>
-                  <div className={styles.dayVal}>
-                    {metric === "steps"
-                      ? `${Math.round(hoverDay.value).toLocaleString()} steps`
-                      : `${hoverDay.value.toFixed(2)} km`}
-                  </div>
-                </>
-              ) : (
-                <div className={styles.muted}>No day selected yet.</div>
-              )}
-            </div>
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <div className={styles.cardTitle}>Day</div>
+            <div className={styles.meta}>Hover a bar in the month chart</div>
           </div>
+          <div className={styles.dayBox}>
+            {hoverDay ? (
+              <>
+                <div className={styles.dayBig}>{fmtDay(hoverDay.date)}</div>
+                <div className={styles.dayWeek}>{weekday(hoverDay.date)}</div>
+                <div className={styles.dayVal}>{`${Math.round(hoverDay.steps).toLocaleString()} steps`}</div>
+                <div className={styles.dayVal}>{`${hoverDay.km.toFixed(2)} km`}</div>
+              </>
+            ) : (
+              <div className={styles.muted}>No day selected yet.</div>
+            )}
+          </div>
+        </div>
+
         </div>
       </div>
     </div>
