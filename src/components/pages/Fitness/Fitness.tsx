@@ -7,6 +7,17 @@ export default function FitnessPage() {
   return (
     <div className={`${styles.page} ${styles.pageWide}`}> {/* add pageWide to widen container */}
       <Navbar overlay brand="medenijazbec.pro" />
+
+      {/* Glowing nebula field (visual-only) */}
+      <div className={styles.nebulaField} aria-hidden="true">
+        <span className={`${styles.nebula} ${styles.n1}`}><i className={styles.blob}/></span>
+        <span className={`${styles.nebula} ${styles.n2}`}><i className={styles.blob}/></span>
+        <span className={`${styles.nebula} ${styles.n3}`}><i className={styles.blob}/></span>
+        <span className={`${styles.nebula} ${styles.n4}`}><i className={styles.blob}/></span>
+        <span className={`${styles.nebula} ${styles.n5}`}><i className={styles.blob}/></span>
+        <span className={`${styles.nebula} ${styles.n6}`}><i className={styles.blob}/></span>
+      </div>
+
       <main className={styles.main}>
         <div className={styles.container}>
           <h1 className={styles.h1}>Fitness</h1>
@@ -18,7 +29,7 @@ export default function FitnessPage() {
             </div>
           </div>
           {/* 3D RENDRING <ShealthIso3D metric="steps" /> */}
-            
+          
           {/* All logic & rendering lives in the module */}
           <ShealthHistoryModule />
         </div>

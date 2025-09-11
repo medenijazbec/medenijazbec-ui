@@ -177,3 +177,11 @@
   .topRow{ grid-template-columns: 1fr; }
   .controls{ height:auto; }
 }
+/* Hide tooltips & crosshairs inside spark charts only */
+.spark :global(.apexcharts-tooltip),
+.spark :global(.apexcharts-xaxistooltip),
+.spark :global(.apexcharts-yaxistooltip),
+.spark :global(.apexcharts-xcrosshairs),
+.spark :global(.apexcharts-ycrosshairs){
+  display: none !important;
+}
