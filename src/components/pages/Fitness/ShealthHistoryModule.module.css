@@ -185,3 +185,14 @@
 .spark :global(.apexcharts-ycrosshairs){
   display: none !important;
 }
+/* Pungent phosphor-green glow */
+.cardSm,
+.card,
+.controls,
+.mainCard{
+  border-color: rgba(var(--phosphor-rgb), .35);
+  box-shadow:
+    0 0 0 1px rgba(var(--phosphor-rgb), .55),
+    0 0 18px 6px rgba(var(--phosphor-rgb), .40),
+    0 0 42px 12px rgba(var(--phosphor-rgb), .22);
+}
