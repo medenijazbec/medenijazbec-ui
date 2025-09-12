@@ -30,7 +30,9 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [color, setColor] = useState<ColorKey>("green");
 
-  const { pathname } = useLocation();
+const { pathname, hash } = useLocation();
+const aboutActive = pathname === "/" && hash === "#about";
+
   const navigate = useNavigate();
 
   // ===== Theme color hookup =====
@@ -130,102 +132,107 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
             <AdminStatus />
           </div>
 
-          <div className={styles.right}>
-            <div className={styles.links}>
-              {/* Explicit Home link */}
-              <Link className={styles.btn} to="/">Home</Link>
+<div className={styles.right}>
+  <div className={styles.links}>
+    {/* Explicit Home link */}
+    <Link className={styles.btn} to="/">Home</Link>
 
-              <Link
-                className={`${styles.btn} ${pathname.startsWith("/fitness") ? styles.active : ""}`}
-                to="/fitness"
-              >
-                Fitness
-              </Link>
-              <button
-                className={`${styles.btn} ${active==="projects" ? styles.active : ""}`}
-                onClick={() => onClickNav("projects")}
-              >
-                Projects
-              </button>
-              <button
-                className={`${styles.btn} ${active==="about" ? styles.active : ""}`}
-                onClick={() => onClickNav("about")}
-              >
-                About
-              </button>
+    <Link
+      className={`${styles.btn} ${pathname.startsWith("/fitness") ? styles.active : ""}`}
+      to="/fitness"
+    >
+      Fitness
+    </Link>
 
-              {/* ===== Admin links (only for admins) ===== */}
-              {isAdmin && (
-                <>
-                  <Link
-                    className={`${styles.btn} ${pathname.startsWith("/admin/showcase") ? styles.active : ""}`}
-                    to="/admin/showcase"
-                  >
-                    Manage Showcase
-                  </Link>
-                  <Link
-                    className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`}
-                    to="/admin/projects"
-                  >
-                    Manage Projects
-                  </Link>
-                  <Link
-                    className={`${styles.btn} ${pathname.startsWith("/admin/animgroups") ? styles.active : ""}`}
-                    to="/admin/animgroups"
-                  >
-                    Manage Anim Groups
-                  </Link>
-                  <Link
-                    className={`${styles.btn} ${pathname.startsWith("/admin/fitness") ? styles.active : ""}`}
-                    to="/admin/fitness"
-                  >
-                    Manage Fitness
-                  </Link>
-                </>
-              )}
-            </div>
+    {/* Projects: always route; works from anywhere */}
+    <Link
+      className={`${styles.btn} ${pathname.startsWith("/projects") ? styles.active : ""}`}
+      to="/projects"
+    >
+      Projects
+    </Link>
 
-            <div className={styles.tools}>
-              <button
-                className={styles.iconBtn}
-                aria-label="Toggle theme"
-                onClick={() => setDark(v => !v)}
-                title={dark ? "Switch to light" : "Switch to dark"}
-              >
-                <span className={styles.iconSwap}>
-                  <img src={sunPng}  alt="" className={`${styles.icon} ${!dark ? styles.visible : ""}`} />
-                  <img src={moonPng} alt="" className={`${styles.icon} ${ dark ? styles.visible : ""}`} />
-                </span>
-              </button>
+    {/* About: always go to Home #about so it works from any page */}
+    <Link
+      className={`${styles.btn} ${aboutActive ? styles.active : ""}`}
+      to="/#about"
+    >
+      About
+    </Link>
 
-              <span
-                className={styles.colorDot}
-                style={colorDotStyle}
-                title="Theme color"
-                onClick={(e) => { e.stopPropagation(); setPaletteOpen(o => !o); }}
-              />
-              {paletteOpen && (
-                <div className={styles.paletteWrap}>
-                  <div className={styles.palette} role="menu" aria-label="Pick color">
-                    <span className={styles.swatch} style={{background:COLOR_THEME.green.phosphor}} onClick={() => setColor("green")} />
-                    <span className={styles.swatch} style={{background:COLOR_THEME.red.phosphor}}   onClick={() => setColor("red")} />
-                    <span className={styles.swatch} style={{background:COLOR_THEME.blue.phosphor}}  onClick={() => setColor("blue")} />
-                    <span className={styles.swatch} style={{background:COLOR_THEME.lblue.phosphor}} onClick={() => setColor("lblue")} />
-                  </div>
-                </div>
-              )}
+    {/* ===== Admin links (only for admins) ===== */}
+    {isAdmin && (
+      <>
+        <Link
+          className={`${styles.btn} ${pathname.startsWith("/admin/showcase") ? styles.active : ""}`}
+          to="/admin/showcase"
+        >
+          Admin Stats
+        </Link>
+        <Link
+          className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`}
+          to="/admin/projects"
+        >
+          Manage Projects
+        </Link>
+        <Link
+          className={`${styles.btn} ${pathname.startsWith("/admin/animgroups") ? styles.active : ""}`}
+          to="/admin/animgroups"
+        >
+          Manage Anim Groups
+        </Link>
+        <Link
+          className={`${styles.btn} ${pathname.startsWith("/admin/fitness") ? styles.active : ""}`}
+          to="/admin/fitness"
+        >
+          Manage Fitness
+        </Link>
+      </>
+    )}
+  </div>
 
-              <a
-                className={styles.gh}
-                href="https://github.com/medenijazbec"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="GitHub"
-              >
-                <img src={githubPng} alt="GitHub" className={styles.gh} />
-              </a>
-            </div>
-          </div>
+  <div className={styles.tools}>
+    <button
+      className={styles.iconBtn}
+      aria-label="Toggle theme"
+      onClick={() => setDark(v => !v)}
+      title={dark ? "Switch to light" : "Switch to dark"}
+    >
+      <span className={styles.iconSwap}>
+        <img src={sunPng}  alt="" className={`${styles.icon} ${!dark ? styles.visible : ""}`} />
+        <img src={moonPng} alt="" className={`${styles.icon} ${ dark ? styles.visible : ""}`} />
+      </span>
+    </button>
+
+    <span
+      className={styles.colorDot}
+      style={colorDotStyle}
+      title="Theme color"
+      onClick={(e) => { e.stopPropagation(); setPaletteOpen(o => !o); }}
+    />
+    {paletteOpen && (
+      <div className={styles.paletteWrap}>
+        <div className={styles.palette} role="menu" aria-label="Pick color">
+          <span className={styles.swatch} style={{background:COLOR_THEME.green.phosphor}} onClick={() => setColor("green")} />
+          <span className={styles.swatch} style={{background:COLOR_THEME.red.phosphor}}   onClick={() => setColor("red")} />
+          <span className={styles.swatch} style={{background:COLOR_THEME.blue.phosphor}}  onClick={() => setColor("blue")} />
+          <span className={styles.swatch} style={{background:COLOR_THEME.lblue.phosphor}} onClick={() => setColor("lblue")} />
+        </div>
+      </div>
+    )}
+
+    <a
+      className={styles.gh}
+      href="https://github.com/medenijazbec"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="GitHub"
+    >
+      <img src={githubPng} alt="GitHub" className={styles.gh} />
+    </a>
+  </div>
+</div>
+
         </div>
       </nav>
     </>

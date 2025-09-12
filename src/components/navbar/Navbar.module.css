@@ -1,5 +1,4 @@
-/* JetBrains Mono for the whole navbar */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
 :root{
   --nav-height: 3rem;              /* taller bar */
@@ -10,20 +9,21 @@
 
 .nav {
   position: fixed;
-  inset: 0 auto auto 0;            /* top:0; left:0 */
+  inset: 0 auto auto 0;
   right: 0;
   height: var(--nav-height);
-  z-index: 9999;                   /* above everything */
+  z-index: 9999;
 
-  /* STRONG blur & subtle tint so the backdrop-filter shows */
   background: rgba(6, 20, 16, 0.28);
   -webkit-backdrop-filter: blur(26px) saturate(160%);
   backdrop-filter: blur(26px) saturate(160%);
 
   border-bottom: 1px solid rgba(0,255,102,.08);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: "Roboto", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
   user-select: none;
 }
+
 
 .inner {
   height: 100%;
@@ -194,3 +194,10 @@
 }
 .center > * { pointer-events: auto; }
 .inner{ display:flex; align-items:center; justify-content:space-between; }
+/* No underlines in the navbar */
+.nav a,
+.nav a:visited,
+.btn { text-decoration: none; }
+
+/* keep focus visible but not underlined */
+.nav a:focus { outline: 2px solid var(--phosphor); text-decoration: none; }
