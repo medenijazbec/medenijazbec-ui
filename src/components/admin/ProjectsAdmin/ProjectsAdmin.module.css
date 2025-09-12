@@ -42,7 +42,7 @@
   padding:10px; border:1px solid rgba(0,255,102,.2);
   background: rgba(0, 20, 12, .55);
 }
-.rowL{}
+
 .rowTitle{ font-weight:600; letter-spacing:.01em; }
 .rowSub{ opacity:.85; font-size:13px; }
 .rowR{ display:flex; gap:8px; align-items:center; }
@@ -72,3 +72,90 @@
 .imgRow{ display:grid; grid-template-columns: 1fr 1fr 100px auto; gap:8px; }
 
 .actions{ display:flex; gap:8px; justify-content:flex-end; }
+.badgeCover{
+  display:inline-block;
+  border:1px solid rgba(255,255,255,.25);
+  color:#eaeaea; background:rgba(0,0,0,.25);
+  padding:4px 8px; border-radius:6px; font-size:12px;
+}
+.badgeOk{
+  display:inline-block;
+  border:1px solid rgba(0,255,102,.45);
+  color:#c9ffdf; background:rgba(0,255,102,.08);
+  padding:4px 8px; border-radius:6px; font-size:12px;
+}
+/* Image cards */
+.gallery { display: flex; flex-direction: column; gap: 12px; }
+.imgCard{
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid rgba(0,255,102,.25);
+  background: rgba(0, 20, 12, .35);
+}
+.thumbWrap{ position: relative; }
+.thumb{
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid rgba(0,255,102,.35);
+  background:#0a0f0d;
+  display:block;
+}
+.thumbEmpty{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; aspect-ratio:4/3;
+  border:1px dashed rgba(0,255,102,.25);
+  color:#9adfb9; background:rgba(0,0,0,.1);
+  font-size:12px;
+}
+
+.coverBadgeChip{
+  position:absolute; top:6px; left:6px;
+  padding:3px 6px; font-size:12px;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(0,0,0,.35); color:#eaeaea;
+  border-radius:6px;
+}
+.croppedChip{
+  position:absolute; top:6px; right:6px;
+  padding:3px 6px; font-size:12px;
+  border:1px solid rgba(0,255,102,.45);
+  background:rgba(0,255,102,.08); color:#c9ffdf;
+  border-radius:6px;
+}
+
+.imgFields{ display: grid; gap: 8px; align-content:start; }
+.field{ display: grid; gap: 4px; }
+.fieldLabel{ font-size: 12px; opacity: .9; }
+.twoCol{ display:grid; grid-template-columns: 1fr 140px; gap: 8px; }
+
+.actionsRow{
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  gap: 8px; align-items: center;
+}
+.fileBtn{
+  position: relative;
+  display:inline-block;
+  border:1px solid rgba(255,255,255,.2);
+  padding:8px 10px; color:var(--phosphor);
+  cursor:pointer; user-select:none;
+}
+.fileBtn input[type="file"]{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+.btnDanger{
+  background: transparent;
+  color: #ffd6d6;
+  border: 1px solid rgba(255,90,90,.45);
+  padding: 8px 10px; cursor: pointer;
+}
+.btnDanger:hover{ border-color: rgba(255,90,90,.8); }
+
+.coverHint{
+  font-size:12px; opacity:.9; margin-top:2px;
+}
+.hintDot{ opacity:.9; }

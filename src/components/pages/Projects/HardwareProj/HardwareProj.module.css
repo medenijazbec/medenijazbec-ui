@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  --phosphor: #00ff66;
+  --bg: #071a14;
+  --ink: #e6e6e6;
+  --accent-red: #e11d2e; /* vivid red like screenshot titles */
+}
+
+.wrap {
+  font-family: "Roboto", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               "Helvetica Neue", Arial, "Noto Sans";
+  color: var(--ink);
+  width: min(1200px, 96vw);
+  margin: 18px auto 48px auto;
+}
+
+.navRow {
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.heading {
+  font-size: 14px; letter-spacing: .22em; font-weight: 700;
+  text-transform: uppercase; opacity: .9;
+}
+
+/* ===== grid of square covers */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+/* album card */
+.album {
+  position: relative;
+  aspect-ratio: 1 / 1;              /* square like album covers */
+  border: 1px solid rgba(255,255,255,.06);
+  background: #111;
+  overflow: hidden;
+  box-shadow: 0 0 22px rgba(0,0,0,.35);
+  outline: none;
+}
+.album:focus { box-shadow: 0 0 0 2px var(--phosphor) inset; }
+
+.cover {
+  position: absolute;
+  inset: 0;
+  background: #111 center / cover no-repeat;
+  transform: scale(1);
+  filter: saturate(1);
+  transition: transform .35s ease, filter .35s ease;
+}
+
+/* slide-up overlay like the screenshot */
+.overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.7) 28%, rgba(0,0,0,.88) 100%);
+  padding: 10px 10px 12px 10px;
+  transform: translateY(66%);       /* mostly hidden, leaves a hint */
+  transition: transform .35s ease;
+}
+.album:hover .overlay,
+.album:focus .overlay { transform: translateY(0%); }
+.album:hover .cover,
+.album:focus .cover { transform: scale(1.03); filter: saturate(1.12); }
+
+.title {
+  margin: 0;
+  color: var(--accent-red);
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  font-size: clamp(14px, 2.2vw, 18px);
+}
+.teaser {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: .95;
+  color: #ddd;
+}
+
+.links { display: flex; gap: 8px; margin-top: 8px; }
+.link {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  text-decoration: none;
+  color: #f0f0f0;
+}
+.link:hover { background: rgba(255,255,255,.08); }
+
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  opacity: .85;
+  padding: 24px;
+  border: 1px dashed rgba(255,255,255,.15);
+}
+/* Make the whole tile feel clickable */
+.album { cursor: pointer; }
+.cover { cursor: pointer; }
+
+/* Admin tools inside overlay */
+.adminTools{
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+.editBtn{
+  border:1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.25);
+  color:#f2f2f2;
+  padding:4px 8px; font-size:12px;
+  border-radius:6px; cursor:pointer;
+}
+.editBtn:hover{ background: rgba(255,255,255,.08); }
+.cover {
+  position: absolute;
+  inset: 0;
+  background: #111 center / cover no-repeat; /* already present */
+}

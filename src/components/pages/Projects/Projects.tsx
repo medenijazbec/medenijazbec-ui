@@ -7,8 +7,8 @@ import { ASCII_CHARSET } from "@/components/badger/badger.constants";
 import BADGER_DEFAULT from "@/assets/badger_default.png";
 import BADGER_HARDWARE from "@/assets/badger_hardware.png";
 import BADGER_SOFTWARE from "@/assets/badger_software.png";
-import SoftwareProjects from "@/components/SoftwareProj/SoftwareProjects";
-import HardwareProjects from "@/components/HardwareProj/HardwareProjects";
+import SoftwareProjects from "@/components/pages/Projects/SoftwareProj/SoftwareProjects";
+import HardwareProjects from "@/components/pages/Projects/HardwareProj/HardwareProjects";
 
 /* ────────────────────────── TUNE THIS ────────────────────────── */
 // Nudges the rendered ASCII image (not hotspots)
@@ -20,7 +20,7 @@ const GLITCH_GROW = 0.018;
 
 // 🔒 Hard-coded hotspot centers (normalized 0..1 of the stage)
 const HOTSPOTS = {
-  red:  { x: 0.42, y: 0.86 }, // Hardware  → 42%, 86%
+  red:  { x: 0.42, y: 0.86 }, // Hardware  → 42%, 86%cls
   blue: { x: 0.58, y: 0.86 }, // Software  → 58%, 86%
 };
 
