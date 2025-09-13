@@ -263,3 +263,93 @@
 @media (max-width: 560px) {
   :root { --tile-w: 80vw; }
 }
+/* Grid turns the list into responsive cards */
+.hobbyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Individual card */
+.hobbyCard {
+  position: relative;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  outline: none; /* we add our own focus style below */
+  overflow: hidden;
+}
+
+/* Hover/focus effect for visibility */
+.hobbyCard:hover,
+.hobbyCard:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25), 0 2px 10px rgba(0, 0, 0, 0.18);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Subtle sheen sweep on hover for extra visibility */
+.hobbyCard::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 120%;
+  height: 200%;
+  transform: rotate(25deg);
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.hobbyCard:hover::after,
+.hobbyCard:focus-visible::after {
+  opacity: 1;
+}
+
+/* Header row inside each card */
+.hobbyHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* Optional: make the dot a bit more pronounced on cards */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.9;
+  flex: 0 0 8px;
+}
+
+/* Body text inside cards */
+.hobbyBody {
+  margin: 0;
+  line-height: 1.45;
+  opacity: 0.95;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .hobbyCard {
+    transition: none;
+  }
+  .hobbyCard::after {
+    display: none;
+  }
+}

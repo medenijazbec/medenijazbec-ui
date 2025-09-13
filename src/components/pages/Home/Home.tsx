@@ -6,6 +6,7 @@ import Navbar from '@/components/navbar/Navbar';
 import AsciiBadger from '@/components/badger/AsciiBadger';
 import DreamsHero from '@/components/branding/DreamsHero';
 import MoltenTitle from '@/components/branding/MoltenTitle';
+import FooterMatrix from '@/components/Footer/FooterMatrix';
 
 export default function Home() {
   const [showMolten, setShowMolten] = useState(false);
@@ -58,16 +59,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FITNESS (anchor for the nav) */}
-      <section ref={fitnessRef} id="fitness" className={styles.section}>
-        <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Fitness</h2>
-          <p className={styles.muted}>
-            Your fitness content goes here. Hook this up to your real section whenever
-            you’re ready.
-          </p>
-        </div>
-      </section>
+
 
       {/* PROJECTS (still present visually on home if you want it) */}
       <section ref={projectsRef} id="projects" className={styles.badger}>
@@ -87,13 +79,8 @@ export default function Home() {
           </p>
         </div>
       </section>
-
-      {/* FOOTER */}
-      <footer className={styles.footer}>
-        <div className={styles.container}>
-          © {new Date().getFullYear()} Medeni Jazbec — all rights reserved.
-        </div>
-      </footer>
+      <FooterMatrix overlay={false} />
+     
     </div>
   );
 }

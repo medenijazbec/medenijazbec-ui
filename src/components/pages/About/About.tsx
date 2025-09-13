@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./about.module.css";
 import Navbar from "@/components/navbar/Navbar"; // adjust if your path differs
+import FooterMatrix from "@/components/Footer/FooterMatrix";
 
 type SkillCard = {
   title: string;
@@ -337,40 +338,103 @@ const About: React.FC = () => {
 
   return (
     <>
-      <Navbar overlay={false} brand="wendo" />
+      <Navbar overlay={false} brand="medenijazbec.pro" />
 
       <section className={styles.about}>
         {/* Intro */}
-        <header className={styles.intro}>
-          <p className={styles.kicker}>About</p>
-          <h1 className={styles.title}>Hi, I’m Wendo.</h1>
-          <p className={styles.lead}>
-            I’m <strong>22</strong>. I started going to the gym in <strong>2021</strong> and it’s
-            still the best decision I’ve ever made. Outside of work I split time between:
-          </p>
-          <ul className={styles.hobbyGrid}>
-            <li>
-              <span className={styles.dot} /> <b>Firearms:</b> range work, drills, fundamentals,
-              safety-first mindset.
-            </li>
-            <li>
-              <span className={styles.dot} /> <b>Gym:</b> strength + hypertrophy, progress tracking,
-              discipline.
-            </li>
-            <li>
-              <span className={styles.dot} /> <b>Software:</b> TypeScript, React, APIs, automation,
-              agents.
-            </li>
-            <li>
-              <span className={styles.dot} /> <b>Hardware:</b> sensors, MCUs, edge compute, custom
-              rigs & boards.
-            </li>
-            <li>
-              <span className={styles.dot} /> <b>Drone Tech:</b> FPV, aerial capture, tuning,
-              telemetry pipelines.
-            </li>
-          </ul>
-        </header>
+<header className={styles.intro}>
+  <p className={styles.kicker}>About</p>
+  <h1 className={styles.title}>
+    I'm <span className={styles.accent}>Medeni Jazbec</span>.
+  </h1>
+  <p className={styles.lead}>
+    I’m <strong>22</strong>. I started going to the gym in <strong>2021</strong> and it’s
+    still the best decision I’ve ever made. Below are some of my hobbies and interests.
+  </p>
+
+  <ul className={styles.hobbyGrid}>
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Gym</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        strength + hypertrophy, progress tracking, stats.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Software</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        TypeScript, React, .NET, Docker, automation, locally run AI, agents.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Hardware</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        custom PCs, server builds, inference servers, rigs & boards.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Drone Tech</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        FPV, aerial capture, tuning, telemetry pipelines. Still larping here too.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Photography</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        landscapes, astrophotography, post-processing.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Video editing</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        random stuff for fun, making friends laugh, etc.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Night vision & thermal</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        planning a quad monocular NV rig with thermal overlay; custom software to spot environmental patterns.
+      </p>
+    </li>
+
+    <li className={styles.hobbyCard} tabIndex={0}>
+      <div className={styles.hobbyHeader}>
+        <span className={styles.dot} />
+        <span className={styles.accent}><b>Firearms</b></span>
+      </div>
+      <p className={styles.hobbyBody}>
+        strong interest, but at the moment still just larping.
+      </p>
+    </li>
+  </ul>
+</header>
+
 
         {/* Skillset */}
         <section className={styles.section}>
@@ -378,7 +442,7 @@ const About: React.FC = () => {
             Need more info? <span className={styles.accent}>I got you.</span>
           </h2>
           <p className={styles.sectionSub}>
-            Here are some of the core services and skills I offer. Each card includes a short
+            Here are some of the core services I've come in contact with. Each card includes a short
             description and the tools/technologies I actively use.
           </p>
 
@@ -416,10 +480,9 @@ const About: React.FC = () => {
         <section className={styles.section}>
           <div className={styles.projectsHeader}>
             <p className={styles.kicker}>Projects</p>
-            <h2 className={styles.sectionTitle}>Streamlined digital experiences.</h2>
+            <h2 className={styles.sectionTitle}>Ongoing projects that I'm currently working on.</h2>
             <p className={styles.sectionSub}>
-              Things I’m currently working on — hover to peek. Images are 16:9 with motion and
-              slide-up overlays. Scroll horizontally; the centered card is full, neighbors peek.
+              Things I’m currently working on — hover to peek. 
             </p>
           </div>
 
@@ -471,6 +534,7 @@ const About: React.FC = () => {
           </div>
         </section>
       </section>
+        <FooterMatrix overlay={false} />
     </>
   );
 };

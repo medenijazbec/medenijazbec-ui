@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '@/components/navbar/Navbar';
 import styles from './Fitness.module.css';
 import ShealthHistoryModule from './ShealthHistoryModule';
+import FooterMatrix from '@/components/Footer/FooterMatrix';
 
 export default function FitnessPage() {
   return (
@@ -34,6 +35,7 @@ export default function FitnessPage() {
           <ShealthHistoryModule />
         </div>
       </main>
+      <FooterMatrix overlay={false} />
     </div>
   );
 }

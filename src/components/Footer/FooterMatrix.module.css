@@ -1,0 +1,167 @@
+/* Roboto for the footer text */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@500;700&display=swap');
+
+:root{
+  --footer-height: 2.75rem;
+  --phosphor-line: #00ff66; /* bright phosphor line */
+}
+
+/* Spacer when NOT overlaying */
+.bodyOffset { height: var(--footer-height); }
+
+/* Base glassy footer */
+.footer {
+  width: 100%;
+  position: relative;                     /* needed for nebula layering */
+  overflow: hidden;                       /* clip the soft glows */
+  background: rgba(6, 20, 16, 0.28);      /* keep interior color the same */
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  border-top: 1px solid var(--phosphor-line); /* bright line */
+  color: #e6f5ec;                         /* keep text color the same */
+  font-family: "Roboto", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans";
+  z-index: 9998;
+}
+
+/* Fixed to bottom when overlay=true (default) */
+.fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.inner {
+  position: relative;  /* sits above nebula layer */
+  z-index: 2;
+  height: var(--footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center; /* centered content */
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.copy {
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #e8e8e8; /* keep interior text color the same */
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ───────── Nebula layer (very subtle) ───────── */
+.nebulas {
+  position: absolute;
+  inset: -40% -20%;     /* extend past edges for smooth drift */
+  z-index: 1;           /* behind .inner text, above backdrop */
+  pointer-events: none;
+  opacity: 0.45;        /* global softness */
+  filter: saturate(115%);
+}
+
+.nebula {
+  position: absolute;
+  width: 44vmax;
+  height: 44vmax;
+  border-radius: 50%;
+  /* soft radial with long falloff; inner color is faint */
+  background:
+    radial-gradient( circle at 50% 50%,
+      rgba(126, 242, 183, 0.22) 0%,     /* minty phosphor hint */
+      rgba(30, 180, 130, 0.12) 28%,
+      rgba(20, 60, 50, 0.06) 52%,
+      rgba(0, 0, 0, 0) 70%
+    );
+  mix-blend-mode: screen;
+  filter: blur(36px);
+  /* composed motion: slow drift + gentle breathing */
+  animation:
+    drift 48s linear infinite,
+    breathe 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Slight variations per blob: hue, size, path, timing */
+.n1 {
+  left: -8%;
+  bottom: -30%;
+  transform-origin: 30% 70%;
+  animation-duration: 52s, 15s;
+}
+.n2 {
+  right: -10%;
+  top: -28%;
+  transform-origin: 70% 30%;
+  animation-duration: 58s, 13s;
+  background:
+    radial-gradient( circle at 50% 50%,
+      rgba(120, 220, 255, 0.18) 0%,
+      rgba(30, 140, 200, 0.10) 30%,
+      rgba(15, 40, 60, 0.05) 55%,
+      rgba(0,0,0,0) 72%
+    );
+}
+.n3 {
+  left: 20%;
+  top: -36%;
+  transform-origin: 40% 40%;
+  animation-duration: 60s, 16s;
+  background:
+    radial-gradient( circle at 50% 50%,
+      rgba(200, 120, 255, 0.13) 0%,
+      rgba(120, 70, 180, 0.08) 32%,
+      rgba(40, 20, 60, 0.04) 56%,
+      rgba(0,0,0,0) 74%
+    );
+}
+.n4 {
+  right: 18%;
+  bottom: -34%;
+  transform-origin: 60% 80%;
+  animation-duration: 50s, 14s;
+  background:
+    radial-gradient( circle at 50% 50%,
+      rgba(100, 255, 200, 0.16) 0%,
+      rgba(50, 170, 140, 0.09) 30%,
+      rgba(20, 60, 50, 0.05) 55%,
+      rgba(0,0,0,0) 72%
+    );
+}
+.n5 {
+  left: 55%;
+  top: -18%;
+  transform-origin: 80% 20%;
+  animation-duration: 64s, 17s;
+  background:
+    radial-gradient( circle at 50% 50%,
+      rgba(126, 242, 183, 0.16) 0%,
+      rgba(30, 150, 110, 0.09) 30%,
+      rgba(20, 60, 50, 0.05) 55%,
+      rgba(0,0,0,0) 72%
+    );
+}
+
+/* Motion */
+@keyframes drift {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50%  { transform: translate3d(6%, -4%, 0) rotate(180deg) scale(1.03); }
+  100% { transform: translate3d(0, 0, 0) rotate(360deg) scale(1); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.85; transform: translateZ(0) scale(1); }
+  50%      { opacity: 0.70; transform: translateZ(0) scale(0.985); }
+}
+
+/* Reduced motion: keep the vibe but freeze the animation */
+@media (prefers-reduced-motion: reduce) {
+  .nebula { animation: none; opacity: 0.35; }
+}
+
+/* High contrast on light themes */
+:root[data-theme="light"] .footer {
+  background: rgba(240, 250, 245, 0.6);
+  border-top: 1px solid var(--phosphor-line); /* still the bright line */
+  color: #0b1a12;
+}
+:root[data-theme="light"] .copy { color: #10241a; }

@@ -9,6 +9,7 @@ import BADGER_HARDWARE from "@/assets/badger_hardware.png";
 import BADGER_SOFTWARE from "@/assets/badger_software.png";
 import SoftwareProjects from "@/components/pages/Projects/SoftwareProj/SoftwareProjects";
 import HardwareProjects from "@/components/pages/Projects/HardwareProj/HardwareProjects";
+import FooterMatrix from "@/components/Footer/FooterMatrix";
 
 /* ────────────────────────── TUNE THIS ────────────────────────── */
 // Nudges the rendered ASCII image (not hotspots)
@@ -601,7 +602,8 @@ export default function ProjectsPage() {
         {/* Only render project lists after a click lock */}
         {locked === "software" && <SoftwareProjects />}
         {locked === "hardware" && <HardwareProjects />}
-      </main>
+      </main><FooterMatrix overlay={false} />
     </div>
+    
   );
 }
