@@ -9,8 +9,8 @@ import VGRegister from "@/components/auth/VGRegister/VGRegister";
 import VSLogin from "@/components/auth/VSLogin/VSLogin";
 import AdminShowcase from "@/components/admin/AdminShowcase/AdminShowcase";
 import ProjectsAdmin from "./components/admin/ProjectsAdmin/ProjectsAdmin";
+import AboutPage from "@/components/pages/About/About";
 
-// 👇 NEW
 import AdminFitness from "@/components/admin/AdminFitness/AdminFitness";
 import FitnessPage from "@/components/pages/Fitness/Fitness";
 
@@ -34,6 +34,7 @@ export default function App() {
           <Route path="/fitness" element={<FitnessPage />} />
           <Route path="/vg" element={<VGRegister />} />
           <Route path="/vs" element={<VSLogin />} />
+           <Route path="/about" element={<AboutPage />} />  
 
           {/* Admin-only */}
           <Route

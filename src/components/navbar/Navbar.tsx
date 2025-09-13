@@ -29,9 +29,9 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   const [dark, setDark] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [color, setColor] = useState<ColorKey>("green");
-
-const { pathname, hash } = useLocation();
-const aboutActive = pathname === "/" && hash === "#about";
+  
+  const { pathname, hash } = useLocation();
+  const aboutActive = pathname === "/" && hash === "#about";
 
   const navigate = useNavigate();
 
@@ -152,13 +152,13 @@ const aboutActive = pathname === "/" && hash === "#about";
       Projects
     </Link>
 
-    {/* About: always go to Home #about so it works from any page */}
-    <Link
-      className={`${styles.btn} ${aboutActive ? styles.active : ""}`}
-      to="/#about"
-    >
-      About
-    </Link>
+    {/* About*/}
+        <Link
+          className={`${styles.btn} ${aboutActive ? styles.active : ""}`}
+          to="/about"                               // ⬅️ was "/#about"
+        >
+          About
+        </Link>
 
     {/* ===== Admin links (only for admins) ===== */}
     {isAdmin && (
