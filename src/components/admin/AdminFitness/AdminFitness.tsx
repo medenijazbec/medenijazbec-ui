@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/navbar/Navbar';
 import { http } from '@/api/api';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -25,15 +25,14 @@ export default function AdminFitness() {
       setMsg(e?.message ?? 'Failed to load list.');
     }
   };
-
   useEffect(() => { if (isAuthed && isAdmin) refresh(); }, [isAuthed, isAdmin]);
 
   const humanSize = (n: number) => {
     if (n < 1024) return `${n} B`;
-    if (n < 1024**2) return `${(n/1024).toFixed(1)} KB`;
-    if (n < 1024**3) return `${(n/1024**2).toFixed(1)} MB`;
-    return `${(n/1024**3).toFixed(2)} GB`;
-  };
+    if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`;
+    if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+    return `${(n / 1024 ** 3).toFixed(2)} GB`;
+    };
 
   const onUpload = async () => {
     const f = fileRef.current?.files?.[0];
@@ -43,13 +42,12 @@ export default function AdminFitness() {
       const fd = new FormData();
       fd.append('file', f);
       if (label.trim()) fd.append('label', label.trim());
-            const json = await http.postForm<{ zipSavedAs: string; extractedFolderName: string }>(
-            '/api/shealth/upload-zip',
-            fd
-            );
-            setMsg(`ZIP saved & extracted → ${json.extractedFolderName}`);
-            await refresh();
-
+      const json = await http.postForm<{ zipSavedAs: string; extractedFolderName: string }>(
+        '/api/shealth/upload-zip',
+        fd
+      );
+      setMsg(`ZIP saved & extracted → ${json.extractedFolderName}`);
+      await refresh();
     } catch (e: any) {
       setMsg(e?.message ?? 'Upload failed.');
     } finally {
@@ -57,20 +55,23 @@ export default function AdminFitness() {
     }
   };
 
-  const onProcess = async (folderName: string) => {
+  const onProcessAll = async () => {
     setBusy(true);
-    setMsg(`Processing ${folderName} …`);
-        try {
-        const res = await http.post<any>(`/api/shealth/process/${encodeURIComponent(folderName)}`);
-        setMsg(`Processed. Inserted ${res.inserted}, skipped ${res.skipped}.`);
-        } catch (e: any) {
-        const apiMsg =
-            e?.response?.data?.detail ||
-            e?.response?.data ||
-            e?.message ||
-            'Process failed.';
-        setMsg(apiMsg);
-        } finally {
+    setMsg('Processing ALL extracted folders…');
+    try {
+      const res = await http.post<any>('/api/shealth/process-all');
+      const processed = res?.processed ?? 0;
+      const real = res?.totalUpsertedReal ?? 0;
+      const syn = res?.totalUpsertedSynthetic ?? 0;
+      setMsg(`Processed ${processed} folder(s). Upserted ${real} real + ${syn} synthetic rows.`);
+    } catch (e: any) {
+      const apiMsg =
+        e?.response?.data?.detail ||
+        e?.response?.data ||
+        e?.message ||
+        'Process-all failed.';
+      setMsg(apiMsg);
+    } finally {
       setBusy(false);
       await refresh();
     }
@@ -135,7 +136,7 @@ export default function AdminFitness() {
             {msg && <div style={{ marginTop: 8 }}>{msg}</div>}
           </div>
 
-          {/* Existing Zips */}
+          {/* ZIP Files */}
           <div className={styles.card}>
             <h2 className={styles.h2}>ZIP Files</h2>
             {!list?.zipFiles?.length ? (
@@ -159,34 +160,36 @@ export default function AdminFitness() {
           {/* Extracted Folders */}
           <div className={styles.card}>
             <h2 className={styles.h2}>Extracted Folders</h2>
+            <div className={styles.row} style={{ justifyContent: 'flex-end', marginTop: -8, marginBottom: 8 }}>
+              <button
+                className={`${styles.btn} ${styles.primary}`}
+                onClick={onProcessAll}
+                disabled={busy || !list?.extracted?.length}
+                title="Run Python pipeline for every extracted folder and insert into FitnessDaily"
+              >
+                {busy ? 'Working…' : 'Process ALL & Insert'}
+              </button>
+            </div>
+
             {!list?.extracted?.length ? (
               <div className={styles.meta}>Nothing extracted yet.</div>
             ) : (
               <table className={styles.table}>
                 <thead>
-                  <tr><th>Folder</th><th>Created (UTC)</th><th style={{textAlign:'right'}}>Actions</th></tr>
+                  <tr><th>Folder</th><th>Created (UTC)</th></tr>
                 </thead>
                 <tbody>
                   {list.extracted.map(x => (
                     <tr key={x.folderName}>
                       <td className={styles.mono}>{x.folderName}</td>
                       <td className={styles.meta}>{new Date(x.createdUtc).toISOString()}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          className={`${styles.btn} ${styles.primary}`}
-                          onClick={() => onProcess(x.folderName)}
-                          disabled={busy}
-                          title="Run Python pipeline and insert new days into FitnessDaily"
-                        >
-                          Process & Insert
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </div>
+
         </div>
       </main>
     </div>
