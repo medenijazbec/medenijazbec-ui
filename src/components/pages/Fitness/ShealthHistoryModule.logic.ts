@@ -7,7 +7,15 @@ export type FitnessRow = {
   day: string;                // "YYYY-MM-DD"
   steps?: number | null;
   distanceKm?: number | null;
+  caloriesOut?: number | null;
+};
 
+export type MonthBucket = {
+  ym: string;
+  items: FitnessRow[];
+  totalSteps: number;
+  totalKm: number;
+  totalCalories: number;
 };
 
 export function useShealthHistory() {
@@ -36,13 +44,14 @@ export function useShealthHistory() {
         const data = await http.get<FitnessRow[]>("/api/fitness/daily", { userId: uid, from, to });
 
         // sanitize nulls → numbers; drop bad dates
-        const safe = (data ?? [])
+        const safe: FitnessRow[] = (data ?? [])
           .filter(r => !!r && !!r.day && r.day !== "1970-01-01")
           .map(r => ({
             userId: r.userId,
             day: r.day,
             steps: Number.isFinite(Number(r.steps)) ? Number(r.steps) : 0,
             distanceKm: Number.isFinite(Number(r.distanceKm)) ? Number(r.distanceKm) : 0,
+            caloriesOut: Number.isFinite(Number(r.caloriesOut)) ? Number(r.caloriesOut) : 0,
           }))
           .sort((a, b) => a.day.localeCompare(b.day));
 
@@ -56,7 +65,7 @@ export function useShealthHistory() {
     })();
   }, [uid]);
 
-  const months = useMemo(() => {
+  const months: MonthBucket[] = useMemo(() => {
     const map = new Map<string, FitnessRow[]>();
     for (const r of rows) {
       const ym = r.day.slice(0, 7);
@@ -65,17 +74,19 @@ export function useShealthHistory() {
     }
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([ym, items]) => {
-        let totalSteps = 0, totalKm = 0;
+      .map<MonthBucket>(([ym, items]) => {
+        let totalSteps = 0, totalKm = 0, totalCalories = 0;
         for (const it of items) {
           totalSteps += Number(it.steps || 0);
           totalKm += Number(it.distanceKm || 0);
+          totalCalories += Number(it.caloriesOut || 0);
         }
         return {
           ym,
           items: items.sort((a, b) => a.day.localeCompare(b.day)),
           totalSteps,
           totalKm: Math.round(totalKm * 100) / 100,
+          totalCalories: Math.round(totalCalories),
         };
       });
   }, [rows]);

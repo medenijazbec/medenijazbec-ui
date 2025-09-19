@@ -78,16 +78,16 @@ const { stepsSeries, kmSeries, yearMarkers, monthTicks } = useMemo(() => {
   // ------- top cards -------
   const totalDays = rows.length;
   const daysOver6k = rows.filter((r) => Number(r.steps || 0) > 6000).length;
-  const daysWithKm = rows.filter((r) => Number(r.distanceKm || 0) > 0).length;
+  const daysOver6km = rows.filter((r) => Number(r.distanceKm || 0) > 6).length;
 
   const sparkSteps6000 = useMemo(
     () => months.map((m) => m.items.filter((d) => Number(d.steps || 0) > 6000).length),
     [months]
   );
-  const sparkKmDays = useMemo(
-    () => months.map((m) => m.items.filter((d) => Number(d.distanceKm || 0) > 0).length),
-    [months]
-  );
+const sparkDaysOver6km = useMemo(
+  () => months.map((m) => m.items.filter((d) => Number(d.distanceKm || 0) > 6).length),
+  [months]
+);
   const sparkAllDays = useMemo(() => months.map((m) => m.items.length), [months]);
 
   // ===================== Apex: refs =====================
@@ -451,27 +451,28 @@ const monthOptions = useMemo<ApexOptions>(() => {
     }
   }, [sparkSteps6000]);
 
-  useEffect(() => {
-    const opts = spark(sparkKmDays);
-    latestSpark3Options.current = opts;
-    const el = spark3Ref.current;
+useEffect(() => {
+  const opts = spark(sparkDaysOver6km);
+  latestSpark3Options.current = opts;
+  const el = spark3Ref.current;
 
-    if (el && !spark3.current) {
-      const chart = new ApexCharts(el, opts);
-      spark3.current = chart;
-      chart
-        .render()
-        .then(() => {
-          spark3Rendered.current = true;
-          if (latestSpark3Options.current) {
-            chart.updateOptions(latestSpark3Options.current as any, false, true);
-          }
-        })
-        .catch(() => {});
-    } else if (spark3.current && spark3Rendered.current && latestSpark3Options.current) {
-      spark3.current.updateOptions(latestSpark3Options.current as any, false, true);
-    }
-  }, [sparkKmDays]);
+  if (el && !spark3.current) {
+    const chart = new ApexCharts(el, opts);
+    spark3.current = chart;
+    chart
+      .render()
+      .then(() => {
+        spark3Rendered.current = true;
+        if (latestSpark3Options.current) {
+          chart.updateOptions(latestSpark3Options.current as any, false, true);
+        }
+      })
+      .catch(() => {});
+  } else if (spark3.current && spark3Rendered.current && latestSpark3Options.current) {
+    spark3.current.updateOptions(latestSpark3Options.current as any, false, true);
+  }
+}, [sparkDaysOver6km]);
+
 
   // destroy on unmount (safe even if not rendered yet)
   useEffect(() => {
@@ -566,11 +567,12 @@ const monthOptions = useMemo<ApexOptions>(() => {
 
         <div className={styles.cardSm}>
           <div className={styles.cardSmHead}>
-            <div className={styles.kpiTitle}>Days with km</div>
-            <div className={styles.kpiValue}>{daysWithKm.toLocaleString()}</div>
+            <div className={styles.kpiTitle}>Days &gt; 6 km</div>
+            <div className={styles.kpiValue}>{daysOver6km.toLocaleString()}</div>
           </div>
           <div ref={spark3Ref} className={styles.spark} />
         </div>
+
 
         <div className={styles.controls}>
           <label className={styles.meta}>Metric:&nbsp;</label>

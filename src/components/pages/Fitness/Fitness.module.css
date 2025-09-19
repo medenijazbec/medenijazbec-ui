@@ -217,3 +217,6 @@
     0 0 18px 6px rgba(var(--phosphor-rgb), .40),
     0 0 42px 12px rgba(var(--phosphor-rgb), .22);
 }
+.sectionPad{
+  padding: 1rem;                       /* outer breathing room around each module */
+}

@@ -1,0 +1,143 @@
+/* src/pages/fitness/FitnessFunFacts.module.css */
+.section { position: relative; z-index: 2; }
+
+/* Card: no glow, crisp border */
+.card{
+  padding: 1.25rem;                    /* was .9rem */
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.85);
+  box-shadow:none;                     /* keep glow off per your last change */
+  margin-bottom:1.1rem;
+}
+
+.h2{ font-size:1.2rem; margin:.1rem 0 .6rem; }
+.h3{ font-size:1.05rem; margin:.1rem 0 .5rem; }
+
+.headerRow{
+  display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+}
+
+.controls{
+  display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; 
+}
+
+.switch{
+  display:flex; gap:.35rem; align-items:center; font-size:.9rem; opacity:.95;
+}
+
+/* Buttons: crisp border, no glow */
+.btn{
+  border:1px solid #b6ffe0;
+  background:transparent;
+  color:var(--phosphor, #00ff66);
+  padding:.45rem .6rem;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+/* KPI tiles: crisp border, no glow */
+.kpiGrid{
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap:.6rem;
+}
+@media (max-width:1100px){ .kpiGrid{ grid-template-columns: repeat(3,1fr);} }
+@media (max-width:700px){ .kpiGrid{ grid-template-columns: repeat(2,1fr);} }
+
+.kpi{
+  padding:.6rem .7rem;
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.6);
+}
+
+.kpiLabel{ font-size:.8rem; opacity:.9; }
+.kpiValue{ font-size:1.1rem; font-weight:600; }
+
+.rowCards{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:1rem;
+}
+
+/* Tables: crisp separators */
+.table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.95rem;
+}
+.table th,.table td{
+  padding:.4rem .5rem;
+  border-bottom:1px solid #b6ffe0;
+}
+
+.meta{ font-size:.85rem; opacity:.9; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+
+.bad{ color:#ff6b6b; }
+
+/* Badges and pills: crisp borders */
+.badge{
+  display:inline-block;
+  padding:.05rem .4rem;
+  border:1px solid #b6ffe0;
+  border-radius:999px;
+  font-size:.8rem;
+  margin:.1rem .25rem .1rem 0;
+}
+
+.pill{
+  font-size:.7rem;
+  padding:.05rem .35rem;
+  border:1px solid #b6ffe0;
+  border-radius:6px;
+  margin-left:.35rem;
+  opacity:.85;
+}
+.kpiGrid{
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap:.8rem;                           /* was .6rem */
+}
+@media (max-width:1100px){ .kpiGrid{ grid-template-columns: repeat(3,1fr);} }
+@media (max-width:700px){ .kpiGrid{ grid-template-columns: repeat(2,1fr);} }
+
+.kpi{
+  padding: .95rem 1.1rem;              /* was .6rem .7rem */
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.6);
+}
+
+.table th,.table td{
+  padding:.55rem .65rem;               /* was .4rem .5rem */
+  border-bottom:1px solid rgba(16,185,129,0.2);
+}
+
+.rowCards{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:1.1rem;                          /* was 1rem */
+}
+/* phosphor-white for texty stuff */
+:root { --ink-phosphor-white: #ecfff7; } /* soft white with a hint of green */
+
+/* Make the default label text white-ish but keep numbers neon */
+.kpiLabel{
+  color: var(--ink-phosphor-white);
+  opacity: 1;               /* override the .9 if you want it brighter */
+}
+
+/* Explicitly keep KPI numbers neon green */
+.kpiValue{
+  color: var(--phosphor, #00ff66);
+}
+
+/* Optional: brighten headings & tiny meta copy too */
+.h2, .h3 {
+  color: var(--ink-phosphor-white);
+}
+
+/* Optional: table headers white, keep table numbers as-is (green) by not touching td */
+.table th { color: var(--ink-phosphor-white); }

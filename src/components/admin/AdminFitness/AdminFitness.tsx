@@ -54,6 +54,33 @@ export default function AdminFitness() {
       setBusy(false);
     }
   };
+const onDeleteAllDaily = async () => {
+  if (!confirm('⚠️ This will permanently delete ALL rows in FitnessDaily for ALL users. Continue?')) return;
+
+  const typed = prompt('Type DELETE to confirm:')?.trim();
+  if (typed !== 'DELETE') { setMsg('Cancelled.'); return; }
+
+  setBusy(true);
+  setMsg('Deleting all FitnessDaily rows…');
+
+  try {
+    // Either call the helper:
+    // const res = await fitness.daily.truncate();
+    // Or call the API directly:
+    const res = await http.del<{ deleted: number }>(`/api/fitness/daily/all`);
+    const deleted = res?.deleted ?? 0;
+    setMsg(`🗑️ Deleted ${deleted} row(s) from FitnessDaily.`);
+  } catch (e: any) {
+    const apiMsg =
+      e?.response?.data?.detail ||
+      e?.response?.data ||
+      e?.message ||
+      'Delete-all failed.';
+    setMsg(apiMsg);
+  } finally {
+    setBusy(false);
+  }
+};
 
   const onProcessAll = async () => {
     setBusy(true);
@@ -156,6 +183,33 @@ export default function AdminFitness() {
               </table>
             )}
           </div>
+            {/* Danger Zone */}
+            <div
+              className={styles.card}
+              style={{
+                borderColor: 'rgba(255,107,107,0.45)',
+                boxShadow: '0 0 12px rgba(255,107,107,0.25)',
+              }}
+            >
+              <h2 className={styles.h2}>Danger Zone</h2>
+              <div className={styles.meta}>
+                This will permanently delete <b>ALL</b> rows in{' '}
+                <code className={styles.kbd}>FitnessDaily</code> for every user. This cannot be undone.
+              </div>
+
+              <div className={styles.row} style={{ marginTop: 8 }}>
+                <button
+                  className={styles.btn}
+                  style={{ borderColor: 'rgba(255,107,107,0.75)' }}
+                  onClick={onDeleteAllDaily}
+                  disabled={busy}
+                  title="Delete all rows from FitnessDaily (admin only)"
+                  aria-label="Delete all FitnessDaily rows"
+                >
+                  {busy ? 'Working…' : 'Delete ALL FitnessDaily rows'}
+                </button>
+              </div>
+            </div>
 
           {/* Extracted Folders */}
           <div className={styles.card}>

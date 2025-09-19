@@ -1,0 +1,11 @@
+.card{
+  width:100%;
+  padding:.8rem 1rem;
+  border:1px solid #b6ffe0;        /* crisp border, no glow */
+  border-radius:10px;
+  background:rgba(7,26,20,0.85);
+}
+.head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.35rem; }
+.title{ font-weight:700; color:#eafff4; }
+.sub{ font-size:.85rem; color:#aef5d4; opacity:.9; }
+.chart{ width:100%; height:180px; } /* slimmer, same width */

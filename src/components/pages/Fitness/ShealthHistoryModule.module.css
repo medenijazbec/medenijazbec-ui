@@ -196,3 +196,35 @@
     0 0 18px 6px rgba(var(--phosphor-rgb), .40),
     0 0 42px 12px rgba(var(--phosphor-rgb), .22);
 }
+.wrap{ margin-top: 1rem; }
+
+.topRow{ gap: .9rem; }                 /* a bit more space between top KPIs/controls */
+
+.cardSm{
+  padding: .8rem 1rem;                 /* more interior space on small KPI cards */
+  border:1px solid #b6ffe0;
+  background:rgba(7,26,20,0.6);
+  border-radius:10px;
+  box-shadow:none;
+}
+
+.mainCard{
+  padding: 1rem;                       /* more air around the main chart */
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.85);
+  box-shadow:none;
+}
+
+.card{
+  padding: 1rem;                       /* right-column cards (month bars, calendar, day box) */
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.85);
+  box-shadow:none;
+}
+
+.grid{ gap: 1.1rem; }                  /* space between main & right column */
+
+.dayBox{ padding: .8rem 1rem; }        /* day details box breathing room */
+.controls { height:auto; min-height:100%; }
