@@ -41,17 +41,36 @@
   overflow: hidden;
   isolation: isolate;
   background: radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
-  font-family: var(--ui-font);
 }
-.hero::before{ /* … unchanged … */ }
-.hero::after{ /* … unchanged … */ }
-
+.hero::before{
+  content:""; position:absolute; inset:-1px; pointer-events:none;
+  background: radial-gradient(120% 100% at 50% 50%,
+    rgba(0,0,0,0) var(--vig-inner),
+    rgba(0,0,0,var(--vig-alpha-mid)) var(--vig-mid),
+    rgba(0,0,0,var(--vig-alpha-outer)) var(--vig-outer));
+  mix-blend-mode: multiply; z-index: 1;
+}
+.hero::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    repeating-linear-gradient(to bottom,
+      rgba(0,0,0,var(--crt-shade-alpha)) 0 calc(var(--crt-thickness) + 0.6px),
+      rgba(0,0,0,0)             calc(var(--crt-thickness) + 0.6px) calc(var(--crt-thickness) + var(--crt-gap) + 0.6px)),
+    repeating-linear-gradient(to bottom,
+      rgba(255,255,255,var(--crt-line-alpha)) 0 var(--crt-thickness),
+      transparent var(--crt-thickness) calc(var(--crt-thickness) + var(--crt-gap))),
+    radial-gradient(var(--glow-radius-x) var(--glow-radius-y) at 50% var(--glow-center-y),
+      rgba(255,255,255,var(--glow-alpha)) 0 35%,
+      rgba(255,255,255,0) 60%);
+  mix-blend-mode: soft-light;
+  opacity: var(--crt-opacity);
+  z-index: 2;
+}
 .heroContent{
   position: absolute; inset: 0; display: grid; place-items: center;
   z-index: 3; pointer-events: none;
   opacity: 0; transform: translateY(10px) scale(.985);
   transition: opacity .9s cubic-bezier(.22,.77,.23,.99), transform .9s cubic-bezier(.22,.77,.23,.99);
-  font-family: var(--ui-font);
 }
 .heroContent.in{ opacity:1; transform:none; }
 

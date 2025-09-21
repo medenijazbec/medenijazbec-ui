@@ -27,40 +27,48 @@ export default function FitnessPage() {
         <div className={styles.container}>
           <h1 className={styles.h1}>Fitness</h1>
 
-          {/* Lightweight intro text only */}
-          <div className={styles.card}>
-<div className={styles.muted} style={{ color: '#ffffffff', opacity: 1 }}>
-  Interactive Samsung Health step history with hover zoom—showing monthly totals, daily breakdowns, and top days for steps and distance.
-  <b style={{ color: 'var(--phosphor, #00ff66)' }}> Note:</b> base figures reflect step data only; I add a gym-energy estimate on top.
+{/* Lightweight intro text only */}
+<div className={styles.card}>
+  <div className={styles.muted} style={{ color: '#ffffffff', opacity: 1 }}>
+    Interactive Samsung Health step history with hover zoom—showing monthly totals, daily breakdowns, and top days for steps and distance.
+    <b style={{ color: 'var(--phosphor, #00ff66)' }}> Note:</b> base figures reflect step data only; I add a gym-energy estimate on top.
 
-  <div style={{ marginTop: 8 }}>
-    <strong style={{ color: 'var(--phosphor, #00ff66)' }}>Gym energy model (assumptions behind the estimate)</strong>
-    <ul style={{ margin: '6px 0 0 18px' }}>
-      <li><b style={{ color: 'var(--phosphor, #00ff66)' }}>Profile:</b> Male, 88&nbsp;kg, 183&nbsp;cm</li>
-      <li>
-        <b style={{ color: 'var(--phosphor, #00ff66)' }}>Schedule:</b> 5 days/week, avg session 75&nbsp;min —
-        Mon chest, Tue back, Wed legs (strength-focused), Thu shoulders, Fri arms
-      </li>
-      <li>
-        <b style={{ color: 'var(--phosphor, #00ff66)' }}>METs:</b> upper-body hypertrophy ≈ 3.5&nbsp;MET; legs strength ≈ 5.0&nbsp;MET
-        (can reach ~6.0&nbsp;MET cuz i got that dog in me)
-      </li>
-      <li>
-        <b style={{ color: 'var(--phosphor, #00ff66)' }}>Per-session kcal (88&nbsp;kg, 75&nbsp;min):</b>
-        upper ≈ 404&nbsp;kcal; legs ≈ 578&nbsp;kcal (≈ 693&nbsp;kcal vigorous)
-      </li>
-      <li>
-        <b style={{ color: 'var(--phosphor, #00ff66)' }}>Weekly add-on used in charts:</b>
-        4×upper + 1×legs ≈ <b style={{ color: 'var(--phosphor, #00ff66)' }}>2,195&nbsp;kcal/week</b>
-        (or <b style={{ color: 'var(--phosphor, #00ff66)' }}>2,310&nbsp;kcal/week</b> if legs are very vigorous)
-      </li>
-    </ul>
+    {/* Collapsible list */}
+    <details className={styles.expander}>
+      <summary className={styles.expanderSummary}>
+        <span className={styles.chev} aria-hidden>▸</span>
+        Gym energy model (assumptions behind the estimate)
+      </summary>
+
+      <div className={styles.expanderBody}>
+        <ul className={styles.expanderList}>
+          <li>
+            <b style={{ color: 'var(--phosphor, #00ff66)' }}>Profile:</b> 88&nbsp;kg, 183&nbsp;cm
+          </li>
+          <li>
+            <b style={{ color: 'var(--phosphor, #00ff66)' }}>Schedule:</b> 5 days/week, avg session 75&nbsp;min —
+            Mon chest, Tue back, Wed legs (strength-focused), Thu shoulders, Fri arms
+          </li>
+          <li>
+            <b style={{ color: 'var(--phosphor, #00ff66)' }}>METs:</b> upper-body hypertrophy ≈ 3.5&nbsp;MET; legs strength ≈ 5.0&nbsp;MET
+            (can reach ~6.0&nbsp;MET cuz i got that dog in me)
+          </li>
+          <li>
+            <b style={{ color: 'var(--phosphor, #00ff66)' }}>Per-session kcal (88&nbsp;kg, 75&nbsp;min):</b>
+            upper ≈ 404&nbsp;kcal; legs ≈ 578&nbsp;kcal (≈ 693&nbsp;kcal vigorous)
+          </li>
+          <li>
+            <b style={{ color: 'var(--phosphor, #00ff66)' }}>Weekly add-on used in charts:</b>
+            4×upper + 1×legs ≈ <b style={{ color: 'var(--phosphor, #00ff66)' }}>2,195&nbsp;kcal/week</b>
+            (or <b style={{ color: 'var(--phosphor, #00ff66)' }}>2,310&nbsp;kcal/week</b> if legs are very vigorous)
+          </li>
+        </ul>
+      </div>
+    </details>
   </div>
 </div>
 
 
-
-          </div>
           {/* 3D RENDRING <ShealthIso3D metric="steps" /> */}
           
           {/* All logic & rendering lives in the module */}

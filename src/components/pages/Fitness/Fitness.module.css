@@ -220,3 +220,63 @@
 .sectionPad{
   padding: 1rem;                       /* outer breathing room around each module */
 }
+/* Collapsible expander (smooth) */
+.expander{
+  margin-top: 8px;
+  border: 1px solid rgba(0,255,102,.18);
+  border-radius: 8px;
+  background: rgba(7,26,20,.35);
+  overflow: hidden;
+}
+
+/* clickable header */
+.expanderSummary{
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  cursor: pointer;
+  color: var(--phosphor);
+  user-select: none;
+  list-style: none;
+  outline: none;
+}
+.expanderSummary::-webkit-details-marker{ display: none; }
+
+/* chevron rotate */
+.chev{
+  display: inline-block;
+  transform: rotate(0deg);
+  transition: transform .22s ease;
+  line-height: 1;
+}
+.expander[open] .chev{ transform: rotate(90deg); }
+
+/* animated body using grid rows (smooth height) */
+.expanderBody{
+  display: grid;
+  grid-template-rows: 0fr;                 /* collapsed */
+  transition: grid-template-rows 360ms cubic-bezier(.22,.77,.23,.99);
+  padding: 0 .6rem;                        /* no bottom padding while closed */
+}
+.expander[open] .expanderBody{
+  grid-template-rows: 1fr;                 /* expanded */
+  padding-bottom: .6rem;
+}
+
+/* inner wrapper that actually clips during the grid animation */
+.expanderInner{
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.expander[open] .expanderInner{
+  opacity: 1;
+  transform: none;
+}
+
+/* list spacing */
+.expanderList{
+  margin: 6px 0 0 18px;
+}
