@@ -74,6 +74,9 @@ export type AnimationGroup = {
   description?: string | null
   tagsJson?: string | null
   published: boolean
+  category: string
+  isDefaultForCategory: boolean
+
   items: AnimationGroupItem[]
   updatedAt: string
 }

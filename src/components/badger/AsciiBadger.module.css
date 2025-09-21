@@ -1,109 +1,60 @@
-:root{
-  --bg:#071a14;
-  --phosphor:#00ff66;
-  --stage-offset-y: clamp(140px, 18vh, 320px);
+/* Load Roboto just for this module */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+
+:root {
+  --ui-font: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 }
 
-/* Component root fills at least viewport (allow page scroll) */
-.root {
-  position: relative;        /* establish containing block */
-  min-height: 100vh;
+/* container for stage + overlay controls */
+.root{
+  position: relative;
   width: 100%;
-  overflow: visible;
-  background: var(--bg);
+  height: 100%;
+  min-height: 0;
+  font-family: var(--ui-font);         /* ← UI uses Roboto */
+}
+
+/* full-bleed rendering area for the ASCII canvas */
+.stage{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Keep the ASCII effect in monospace so characters align perfectly */
+.stage > * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace !important;
+}
+
+/* ─── Minimal, borderless HUD ─────────────────────────────────────────── */
+.hud{
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  z-index: 5;
+  font-family: var(--ui-font);         /* ← Roboto */
+}
+
+.hud > button{
+  border: 1px solid rgba(0,255,102,.35);
+  background: transparent;
   color: var(--phosphor);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  padding: .45rem .7rem;
+  border-radius: 8px;
+  line-height: 1;
+  font: inherit;                       /* ← inherits Roboto */
+  cursor: pointer;
 }
 
-/* REMOVE global CRT & vignette (they were fixed viewport overlays) */
-/* .scanlines::before, .vignette::after — deleted on purpose */
-
-/* HUD — keep it INSIDE the badger section */
-.hud{
-  position:absolute; left:14px; top:12px; padding:10px 12px;
-  border:1px solid rgba(0,255,102,.35);
-  background:rgba(7,26,20,.85);
-  box-shadow:0 0 18px rgba(0,255,102,.35);
-  border-radius:8px; font-size:12px; color:var(--phosphor);
-  z-index:2; /* above stage only */
-}
-.row{ display:flex; gap:.5rem; align-items:center; margin:.25rem 0 }
-select, button{
-  border:1px solid rgba(0,255,102,.35);
-  background:transparent; color:var(--phosphor);
-  padding:6px 10px; border-radius:6px; cursor:pointer
-}
-button:hover, select:hover{ background:rgba(0,255,102,.08) }
-.note{ opacity:.85 }
-
-/* hidden input */
-.hiddenInput{ display:none }
-
-/* AsciiEffect canvas host */
-.stage{
-  position:absolute;
-  left:0; right:0; bottom:0;
-  top: calc(var(--stage-offset-y) + var(--title-to-badger-gap, 0px));
-  z-index: 0;
-}
-/* ========== STACK: puts the two HUDs one under the other ========== */
-.hudStack{
-  position:absolute;
-  left:14px;
-  right:14px;          /* span nearly full width */
-  top:12px;
-  z-index:2;           /* above stage only */
-  display:grid;
-  gap:10px;            /* space between the two bars */
-}
-
-/* ====== ORIGINAL HUD (moved inside hudStack) ====== */
-.hud{
-  position:relative;   /* no longer absolute */
-  padding:10px 12px;
-  border:1px solid rgba(0,255,102,.35);
-  background:rgba(7,26,20,.85);
-  box-shadow:0 0 18px rgba(0,255,102,.35);
-  border-radius:8px;   /* keep curved corners for the original */
-  font-size:12px;
-  color:var(--phosphor);
-}
-
-.row{ display:flex; gap:.5rem; align-items:center; margin:.25rem 0 }
-
-select, button{
-  border:1px solid rgba(0,255,102,.35);
-  background:transparent; color:var(--phosphor);
-  padding:6px 10px; border-radius:6px; cursor:pointer
-}
-button:hover, select:hover{ background:rgba(0,255,102,.08) }
-.note{ opacity:.85 }
-
-/* hidden input */
-.hiddenInput{ display:none }
-
-/* ====== NEW: full-width cyberpunk buttons bar ====== */
-.hudWide{
-  position:relative;
-  padding:10px 12px;
-  border:1px solid rgba(0,255,102,.35);
-  background:rgba(7,26,20,.85);
-  box-shadow:0 0 18px rgba(0,255,102,.35);
-  border-radius:0;     /* square corners as requested */
-}
-
-/* grid that stretches buttons left->right; wraps on smaller screens */
-.hudButtons{
-  display:grid;
-  grid-template-columns: repeat(10, minmax(120px, 1fr)); /* 10 across when space allows */
-  gap:10px;
-  width:100%;
-}
-
-/* AsciiEffect canvas host (unchanged) */
-.stage{
-  position:absolute;
-  left:0; right:0; bottom:0;
-  top: calc(var(--stage-offset-y) + var(--title-to-badger-gap, 0px));
-  z-index: 0;
+.hud > button:hover{
+  border-color: rgba(0,255,102,.55);
 }

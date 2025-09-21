@@ -3,65 +3,84 @@ import styles from "./AsciiBadger.module.css";
 import { AsciiBadger } from "./badger.logic";
 import { ALLOWED_EXTS, ANIM_DIR, PREFETCH_ANIMS } from "./badger.constants";
 import { politePrefetch } from "@/lib/prefetch";
+import { animgroups } from "@/controllers/animationGroups";
+
+const PAGE_LOAD_CATEGORY = "page-load";
+const KICK_SLUG = "kick-the-badger";
+
+const allowed = (n: string) => ALLOWED_EXTS.some(ext => n.toLowerCase().endsWith(ext));
+const pickOne = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
 const AsciiBadgerPage: React.FC = () => {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [core, setCore] = useState<AsciiBadger | null>(null);
-  const [clips, setClips] = useState<string[]>([]);
-  const [current, setCurrent] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+
+  // chosen idle on page load (loop forever)
+  const idleRef = useRef<string | null>(null);
+  // available combat clips
+  const kickFilesRef = useRef<string[]>([]);
 
   useEffect(() => {
     if (!stageRef.current) return;
 
-    const instance = new AsciiBadger(stageRef.current, setStatus);
+    const instance = new AsciiBadger(stageRef.current, undefined);
     setCore(instance);
 
     (async () => {
-      const found = await instance.listAnimations();
-      setClips(found);
+      // pick ONE idle from page-load group and loop forever
+      try {
+        const group = await animgroups.defaultByCategory(PAGE_LOAD_CATEGORY);
+        const files = (group?.items ?? [])
+          .map(i => i.fileName)
+          .filter(Boolean)
+          .filter(allowed);
 
-      if (PREFETCH_ANIMS && found.length) {
-        politePrefetch(found.map((f) => `${ANIM_DIR}${f}`), { maxConcurrency: 2 });
-      }
+        if (files.length) {
+          idleRef.current = pickOne(files);
+          if (PREFETCH_ANIMS) politePrefetch([`${ANIM_DIR}${idleRef.current}`], { maxConcurrency: 1 });
+          await instance.loadClipPath(idleRef.current, { loopForever: true });
+        }
+      } catch { /* ignore */ }
 
-      if (found[0]) {
-        setCurrent(found[0]);
-        await instance.loadClipPath(found[0]);
-      }
+      // preload kick group list
+      try {
+        const kick = await animgroups.get(KICK_SLUG);
+        kickFilesRef.current = (kick?.items ?? [])
+          .map(i => i.fileName)
+          .filter(Boolean)
+          .filter(allowed);
+
+        if (PREFETCH_ANIMS && kickFilesRef.current.length) {
+          politePrefetch(kickFilesRef.current.map(f => `${ANIM_DIR}${f}`), { maxConcurrency: 3 });
+        }
+      } catch { /* ignore */ }
     })();
 
-    return () => instance.dispose();
+    // click → random kick once → back to previously-chosen idle forever
+    const onClick = () => {
+      const idle = idleRef.current;
+      const kicks = kickFilesRef.current;
+      if (!idle || !kicks.length) return;
+
+      const kick = pickOne(kicks);
+      instance.playQueue([
+        { file: kick, opts: { loopOnce: true, fallbackMs: 1200 } },
+        { file: idle, opts: { loopForever: true } },
+      ]);
+    };
+
+    const el = stageRef.current;
+    el.addEventListener("click", onClick);
+    return () => {
+      el.removeEventListener("click", onClick);
+      instance.dispose();
+    };
   }, []);
 
-  const onChangeClip = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const name = e.target.value;
-    setCurrent(name);
-    await core?.loadClipPath(name);
-  };
-
+  // minimal controls (no clip dropdown, no open file, no status)
   const [, setTick] = useState(0);
-  const forceRerender = () => setTick((t) => t + 1);
-
-  const onPlayPause  = () => { core?.togglePlay();       forceRerender(); };
-  const onTurntable  = () => { core?.toggleTurntable();  forceRerender(); };
-  const onLight      = () => { core?.toggleLightSpin();  forceRerender(); };
-  const onOpenFile   = () => fileRef.current?.click();
-
-  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const lower = file.name.toLowerCase();
-    if (!ALLOWED_EXTS.some((ext) => lower.endsWith(ext))) {
-      setStatus("Unsupported file type. Please choose a .glb or .gltf.");
-      return;
-    }
-    const buf = await file.arrayBuffer();
-    core?.loadClipBuffer(buf, file.name);
-  };
-
+  const force = () => setTick(t => t + 1);
   const labels = useMemo(
     () =>
       core?.ui ?? {
@@ -72,44 +91,19 @@ const AsciiBadgerPage: React.FC = () => {
     [core]
   );
 
+  const onPlayPause  = () => { core?.togglePlay();      force(); };
+  const onTurntable  = () => { core?.toggleTurntable(); force(); };
+  const onLight      = () => { core?.toggleLightSpin(); force(); };
+
   return (
-   
     <div className={styles.root}>
-      {/* HUD (now absolute, not fixed) */}
       <div className={styles.hud}>
-        <div className={styles.row}>
-          <strong>ASCII Animation</strong>
-          <span className={styles.note}>• Drag = rotate • Scroll = zoom • Double-click = reset</span>
-        </div>
-        <div className={styles.row}>
-          <label htmlFor="clip">Clip:</label>
-          <select id="clip" value={current} onChange={onChangeClip}>
-            {clips.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-
-          <button onClick={onPlayPause}>{labels.playPauseLabel()}</button>
-          <button onClick={onTurntable}>{labels.turntableLabel()}</button>
-          <button onClick={onLight}>{labels.lightLabel()}</button>
-          <button onClick={onOpenFile}>Open GLB</button>
-          <span className={styles.note}>{status}</span>
-        </div>
-
-
-
+        <button onClick={onPlayPause}>{labels.playPauseLabel()}</button>
+        <button onClick={onTurntable}>{labels.turntableLabel()}</button>
+        <button onClick={onLight}>{labels.lightLabel()}</button>
       </div>
 
-      {/* hidden file input */}
-      <input
-        ref={fileRef}
-        className={styles.hiddenInput}
-        type="file"
-        accept=".glb,.gltf"
-        onChange={onFilePicked}
-      />
-
-      {/* stage receives the AsciiEffect DOM node */}
+      {/* where AsciiEffect mounts; fills its parent */}
       <div ref={stageRef} className={styles.stage} />
     </div>
   );

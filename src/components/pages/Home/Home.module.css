@@ -1,139 +1,218 @@
+/* Load Roboto just for this module */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+
 :root{
   --bg:#071a14;
   --phosphor:#00ff66;
   --hero-h: 90vh;
 
-  /* === darker, CRT-y tuning (keeps your colors) === */
-  /* CRT */
-  --crt-line-alpha: .16;      /* bright line strength */
-  --crt-shade-alpha: .22;     /* NEW: dark band strength */
-  --crt-thickness: 1px;       /* line thickness */
-  --crt-gap: 2.1px;           /* denser spacing */
-  --crt-opacity: .95;         /* overall CRT intensity */
+  --crt-line-alpha: .16;
+  --crt-shade-alpha: .22;
+  --crt-thickness: 1px;
+  --crt-gap: 2.1px;
+  --crt-opacity: .95;
 
-  /* Vignette (edge darkening) */
-  --vig-inner: 48%;           /* pull darkening inward */
+  --vig-inner: 48%;
   --vig-mid: 70%;
   --vig-outer: 98%;
-  --vig-alpha-mid: .26;       /* stronger mid ring */
-  --vig-alpha-outer: .50;     /* darker far edges */
+  --vig-alpha-mid: .26;
+  --vig-alpha-outer: .50;
 
-  /* Center glow (keep middle readable, but not too bright) */
   --glow-alpha: .08;
   --glow-radius-x: 62%;
   --glow-radius-y: 46%;
   --glow-center-y: 48%;
+
+  --ui-font: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
-.page{ color:var(--phosphor); background:var(--bg); min-height:100vh; }
-
+.page{ color:var(--phosphor); background:var(--bg); min-height:100vh; font-family: var(--ui-font); }
 .container{ max-width:1200px; margin:0 auto; padding:2rem; }
-
 .h1{ font-size:1.8rem; margin-bottom:.75rem; }
 .p{ opacity:.9; }
 
-/* HERO — DreamsHero is clipped to this band only */
+/* HERO */
 .hero{
   position: relative;
   height: var(--hero-h);
-  overflow: hidden;              /* nothing spills outside */
-  isolation: isolate;            /* keep stacking local */
-  background:
-    radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(120% 85% at 50% 0%, #0a2b22 0%, #081f19 60%, #072117 100%);
+  font-family: var(--ui-font);
 }
+.hero::before{ /* … unchanged … */ }
+.hero::after{ /* … unchanged … */ }
 
-/* VIGNETTE — darker edges/corners, hero only */
-.hero::before{
-  content:"";
-  position:absolute;
-  inset:-1px;                    /* tiny bleed to avoid edge seams */
-  pointer-events:none;
-  background:
-    radial-gradient(120% 100% at 50% 50%,
-      rgba(0,0,0,0) var(--vig-inner),
-      rgba(0,0,0,var(--vig-alpha-mid)) var(--vig-mid),
-      rgba(0,0,0,var(--vig-alpha-outer)) var(--vig-outer)
-    );
-  mix-blend-mode: multiply;      /* safe darken without tinting */
-  z-index: 1;                    /* below scanlines, below title */
-}
-
-/* CRT scanlines — stronger + added dark bands for depth, hero only */
-.hero::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-
-  /* LAYER 1: dark bands (add shadow between lines)
-     LAYER 2: bright scanline highlights
-     LAYER 3: subtle center glow to keep middle readable */
-  background:
-    /* dark bands */
-    repeating-linear-gradient(
-      to bottom,
-      rgba(0,0,0,var(--crt-shade-alpha)) 0 calc(var(--crt-thickness) + 0.6px),
-      rgba(0,0,0,0) calc(var(--crt-thickness) + 0.6px) calc(var(--crt-thickness) + var(--crt-gap) + 0.6px)
-    ),
-    /* bright highlights */
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,var(--crt-line-alpha)) 0 var(--crt-thickness),
-      transparent var(--crt-thickness) calc(var(--crt-thickness) + var(--crt-gap))
-    ),
-    /* center glow */
-    radial-gradient(
-      var(--glow-radius-x) var(--glow-radius-y) at 50% var(--glow-center-y),
-      rgba(255,255,255,var(--glow-alpha)) 0 35%,
-      rgba(255,255,255,0) 60%
-    );
-
-  /* stable global blend with the scene; keeps DreamsHero visible */
-  mix-blend-mode: soft-light;
-  opacity: var(--crt-opacity);
-
-  z-index: 2;                    /* above vignette & grid, below title */
-}
-
-/* Centered hero content (title), sits ABOVE both overlays */
 .heroContent{
+  position: absolute; inset: 0; display: grid; place-items: center;
+  z-index: 3; pointer-events: none;
+  opacity: 0; transform: translateY(10px) scale(.985);
+  transition: opacity .9s cubic-bezier(.22,.77,.23,.99), transform .9s cubic-bezier(.22,.77,.23,.99);
+  font-family: var(--ui-font);
+}
+.heroContent.in{ opacity:1; transform:none; }
+
+/* ===== Badger split section ===== */
+.badger{ padding: 0; min-height: 70vh; font-family: var(--ui-font); }
+
+.split{
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  align-items: stretch;
+  width: 100%;
+  min-height: calc(100vh - var(--nav-height, 3rem));
+  font-family: var(--ui-font);
+}
+
+.split::after{ display: none; }
+
+.badgerPane{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: var(--ui-font);
+}
+
+/* wrapper the AsciiBadger mounts into; stretches fully */
+.badgerFrame{
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-family: var(--ui-font);
+}
+
+/* Right half (transparent) */
+.sidePane{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 28px;
+  background: transparent;
+  border-left: none;
+  min-height: inherit;
+  font-family: var(--ui-font);
+}
+.sideInner{
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap: 16px;
+  font-family: var(--ui-font);
+}
+
+/* Prompt card */
+.promptCard{
+  margin-top: 4px;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  font-family: var(--ui-font);
+}
+.promptLabel{ display:block; font-size:.9rem; opacity:.85; margin-bottom:.35rem; }
+.promptRow{ display:flex; gap:.5rem; align-items:center; }
+.promptInput{
+  flex:1;
+  border:1px solid rgba(0,255,102,.30);
+  background:transparent;
+  color:var(--phosphor);
+  padding:.6rem .7rem;
+  border-radius:8px;
+  font-family: var(--ui-font);
+}
+.promptBtn{
+  border:1px solid rgba(0,255,102,.30);
+  background: transparent;
+  color: var(--phosphor);
+  padding:.6rem .9rem;
+  border-radius:8px;
+  cursor:not-allowed;
+  opacity:.7;
+  font-family: var(--ui-font);
+}
+.promptHint{ display:block; margin-top:.4rem; opacity:.6; font-size:.8rem; }
+
+.footer{ margin-top:4rem; border-top:1px solid rgba(0,255,102,.25); background:rgba(0,0,0,.25); }
+
+@media (max-width: 960px){
+  .split{ grid-template-columns: 1fr; min-height: auto; }
+  .sidePane{ border-left: none; border-top: none; background: transparent; }
+}
+
+/* stage helper if used directly on the page */
+.stage{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Ensure the ASCII itself stays monospace */
+.stage > * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace !important;
+}
+/* ───────────── Splitter (glassy bar) ───────────── */
+.splitterArea{
+  position: relative;
+  height: 6rem;
+  width: 100%;
+  overflow: hidden;
+
+  /* glass like the navbar */
+  background: rgba(6,20,16,0.28);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+
+  border-top: 1px solid rgba(0,255,102,.08);
+  border-bottom: 1px solid rgba(0,255,102,.08);
+}
+
+/* animated “zoomed Perlin” overlay, already colored in the SVG filter */
+.noise{
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 3;                    /* ensure title is above ::before/::after */
   pointer-events: none;
+  opacity: .35;                 /* strength of the effect */
+  mix-blend-mode: normal;       /* keep the color ramp intact */
 }
-
-/* Stage for the ASCII badger */
-.badger{
-  display: grid;
-  place-items: center;
-  padding: 64px 16px;
-  min-height: 60vh;
-}
-
-/* footer ensures there’s content below the viewport */
-.footer{
-  margin-top:4rem;
-  border-top:1px solid rgba(0,255,102,.25);
-  background:rgba(0,0,0,.25);
-}
-/* Centered hero content; add entrance animation */
-.heroContent{
+/* ── Splitter button ───────────────────────────────────────── */
+.splitterBtn{
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 3;
-  pointer-events: none;
+  margin: auto;                 /* centers in the splitter */
+  width: max-content;
+  height: 2.25rem;
+  padding: 0 .95rem;
 
-  opacity: 0;
-  transform: translateY(10px) scale(.985);
-  transition: opacity .9s cubic-bezier(.22,.77,.23,.99),
-              transform .9s cubic-bezier(.22,.77,.23,.99);
+  border: 1px solid var(--phosphor);
+  border-radius: 0;             /* square corners */
+  background: transparent;
+  color: var(--phosphor);
+  font: 500 0.95rem var(--ui-font);
+  letter-spacing: .02em;
+  line-height: 1;
+  cursor: pointer;
+
+  opacity: 0;                   /* fade-in */
+  animation: splitterFadeIn .8s ease-out .25s forwards;
 }
-.heroContent.in{
-  opacity: 1;
-  transform: none;
+
+.splitterBtn:hover{
+  background: rgba(0,255,102,.06);
+}
+
+@keyframes splitterFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

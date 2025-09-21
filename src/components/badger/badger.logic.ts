@@ -14,7 +14,7 @@ import {
   DRACO_DECODER_PATH,
 } from "./badger.constants";
 
-/** Silence Canvas2D readback warnings & speed up AsciiEffect reads without upsetting TS types. */
+/** Speed up AsciiEffect readbacks. */
 (() => {
   const proto = HTMLCanvasElement.prototype as any;
   const orig: (this: HTMLCanvasElement, ...args: any[]) => any = proto.getContext;
@@ -22,7 +22,6 @@ import {
     proto.getContext = function (...args: any[]) {
       const [kind, opts] = args;
       if (kind === "2d") {
-        // Use .apply so TS sees exactly 2 args (thisArg + argsArray) rather than 3 on .call()
         return (orig as any).apply(this, ["2d", { willReadFrequently: true, ...(opts || {}) }]);
       }
       return (orig as any).apply(this, args);
@@ -30,7 +29,17 @@ import {
   }
 })();
 
-/** Utilities to load & play GLB clips inside an ASCII-rendered Three.js scene. */
+export type LoadOptions = {
+  /** Play the first (only) GLTF animation ONCE and clamp. (default true) */
+  loopOnce?: boolean;
+  /** Loop the animation forever (overrides loopOnce). */
+  loopForever?: boolean;
+  /** If the GLB has no animation, advance after this many ms. */
+  fallbackMs?: number;
+};
+
+type QueueItem = { file: string; opts?: LoadOptions };
+
 export class AsciiBadger {
   private renderer: THREE.WebGLRenderer;
   private effect: AsciiEffect;
@@ -42,6 +51,7 @@ export class AsciiBadger {
   private lightPivot: THREE.Object3D;
 
   private turntable: THREE.Group;
+  private modelPivot: THREE.Group;           // <— NEW: holds only the model
   private plate: THREE.Mesh | null = null;
 
   private loader: GLTFLoader;
@@ -57,8 +67,23 @@ export class AsciiBadger {
 
   private clock = new THREE.Clock();
 
+  // sequencing
+  private onClipFinished: (() => void) | null = null;
+  private finishTimer: number | null = null;
+
+  // queue control
+  private queueActive = false;
+  private queueToken = 0;
+
+  // duration + waiters
+  private finishWaiters: Array<() => void> = [];
+  private lastDurationMs: number | null = null;
+  private static readonly PAD_MS = 40;
+
+  // model offset (positive values move the character down on screen)
+  private modelOffsetY = 0;
+
   constructor(private mount: HTMLElement, private statusSetter?: (s: string) => void) {
-    // Core
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
       45,
@@ -69,15 +94,31 @@ export class AsciiBadger {
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.effect = new AsciiEffect(this.renderer, ASCII_CHARSET, { invert: true, resolution: 0.22 });
-    this.effect.setSize(this.mount.clientWidth, this.mount.clientHeight);
+
+    // Make the ASCII DOM fill its container
+    const mountComputed = getComputedStyle(this.mount);
+    if (mountComputed.position === "static") {
+      this.mount.style.position = "relative";
+    }
+    this.mount.style.overflow = "hidden";
+
+    const effEl = this.effect.domElement as HTMLElement;
+    effEl.style.position = "absolute";
+    effEl.style.inset = "0";
+    effEl.style.display = "block";
+    effEl.style.width = "100%";
+    effEl.style.height = "100%";
 
     const rootStyles = getComputedStyle(document.documentElement);
-    (this.effect.domElement as HTMLElement).style.color =
-      rootStyles.getPropertyValue("--phosphor").trim() || "#00ff66";
-    (this.effect.domElement as HTMLElement).style.backgroundColor =
-      rootStyles.getPropertyValue("--bg").trim() || "#071a14";
+    effEl.style.color = rootStyles.getPropertyValue("--phosphor").trim() || "#00ff66";
+    effEl.style.backgroundColor = rootStyles.getPropertyValue("--bg").trim() || "#071a14";
 
-    this.mount.appendChild(this.effect.domElement);
+    this.mount.appendChild(effEl);
+
+    // Initial size (ceil to avoid sub-pixel gaps)
+    const w0 = Math.ceil(this.mount.clientWidth);
+    const h0 = Math.ceil(this.mount.clientHeight);
+    this.effect.setSize(w0, h0);
 
     this.controls = new OrbitControls(this.camera, this.effect.domElement);
     this.controls.enableDamping = true;
@@ -93,36 +134,44 @@ export class AsciiBadger {
     this.lightPivot.add(this.key);
     this.key.position.set(200, 120, 0);
 
+    // Stage root + model pivot
     this.turntable = new THREE.Group();
+    this.modelPivot = new THREE.Group();      // <— NEW
+    this.turntable.add(this.modelPivot);      // model goes under modelPivot
     this.scene.add(this.turntable);
 
-    // GLTF loader (+ Draco if enabled)
     this.loader = new GLTFLoader();
     if (USE_DRACO) {
       this.draco = new DRACOLoader();
-      this.draco.setDecoderPath(DRACO_DECODER_PATH); // e.g. "/draco/"
+      this.draco.setDecoderPath(DRACO_DECODER_PATH);
       this.loader.setDRACOLoader(this.draco);
     }
 
-    // events
     window.addEventListener("resize", this.onResize);
-    // Some type defs omit reset(); call defensively.
     window.addEventListener("dblclick", () => (this.controls as any).reset?.());
-
-    // start render loop
     this.animate();
   }
 
+  // === Public: move only the badger (model) on Y ===
+  /** Positive values move the character downward on screen. */
+  setModelOffsetY = (y: number) => {
+    this.modelOffsetY = y;
+    this.modelPivot.position.y = -y; // screen-down = negative world-Y
+  };
+
+  // ---- lifecycle
   dispose = () => {
     window.removeEventListener("resize", this.onResize);
+    this.stopQueue();
     this.clearCurrent();
     this.controls.dispose();
     this.draco?.dispose?.();
     this.renderer.dispose();
     this.mount.removeChild(this.effect.domElement);
+    this.clearFinishTimer();
   };
 
-  // ---- Public controls (used by TSX) ----
+  // ---- basic controls
   togglePlay = () => this.setPlaying(!this.playing);
   setPlaying = (v: boolean) => {
     this.playing = v;
@@ -131,9 +180,56 @@ export class AsciiBadger {
   toggleTurntable = () => (this.spin = !this.spin);
   toggleLightSpin = () => (this.spinLight = !this.spinLight);
 
-  /** Try several ways to get all .glb/.gltf files under ANIM_DIR */
+  setOnClipFinished = (cb: (() => void) | null) => {
+    this.onClipFinished = cb;
+  };
+
+  // ---- queue API
+  /** Play items strictly one-after-another; if the last has loopForever, it holds until replaced. */
+  playQueue = (items: Array<QueueItem | string>) => {
+    const normalized: QueueItem[] = items.map((it) =>
+      typeof it === "string" ? { file: it, opts: { loopOnce: true, fallbackMs: 1200 } } : it
+    );
+
+    this.queueToken++;
+    const token = this.queueToken;
+    this.queueActive = true;
+
+    const run = async () => {
+      for (let i = 0; i < normalized.length; i++) {
+        const item = normalized[i];
+        const wantsForever = !!item.opts?.loopForever;
+
+        await this.loadClipPath(
+          item.file,
+          wantsForever
+            ? { loopForever: true }
+            : { loopOnce: item.opts?.loopOnce !== false, fallbackMs: item.opts?.fallbackMs ?? 1200 }
+        );
+
+        if (!wantsForever) {
+          await this.waitForFinishOrDuration(token);
+        } else {
+          break; // hold here forever until a new queue starts
+        }
+      }
+      if (token === this.queueToken) this.queueActive = false;
+    };
+
+    void run();
+  };
+
+  stopQueue = () => {
+    this.queueToken++;
+    this.queueActive = false;
+    this.resolveFinishWaiters();
+    this.setOnClipFinished(null);
+  };
+
+  isQueueActive = () => this.queueActive;
+
+  // ---- discovery
   listAnimations = async (): Promise<string[]> => {
-    // 1) Manifest (recommended)
     try {
       const r = await fetch(`${ANIM_DIR}animations.json`, { cache: "no-cache" });
       if (r.ok) {
@@ -141,8 +237,6 @@ export class AsciiBadger {
         return arr.filter((n) => ALLOWED_EXTS.some((ext) => n.toLowerCase().endsWith(ext)));
       }
     } catch {}
-
-    // 2) Directory listing (if enabled)
     if (SCAN_ANIM_DIR) {
       try {
         const r = await fetch(ANIM_DIR, { cache: "no-cache" });
@@ -155,70 +249,135 @@ export class AsciiBadger {
         }
       } catch {}
     }
-
-    // 3) Fallback list
     return [...FALLBACK_CLIPS];
   };
 
-  /** Load a GLB/GLTF from path (async) */
-  loadClipPath = async (fileName: string) => {
+  // ---- loading
+  loadClipPath = async (fileName: string, opts?: LoadOptions) => {
     const path = `${ANIM_DIR}${fileName}`;
     this.setStatus(`Loading: ${path}`);
     try {
       const gltf = await this.loader.loadAsync(path);
-      this.afterLoad(gltf, path);
+      this.afterLoad(gltf, path, opts);
     } catch (err) {
       console.error(err);
       this.setStatus(`Failed: ${path}`);
     }
   };
 
-  /** Load from an ArrayBuffer (async) */
-  loadClipBuffer = async (arrayBuffer: ArrayBuffer, name = "buffer") => {
+  loadClipBuffer = async (arrayBuffer: ArrayBuffer, name = "buffer", opts?: LoadOptions) => {
     try {
       const gltf = await this.loader.parseAsync(arrayBuffer, "");
-      this.afterLoad(gltf, name);
+      this.afterLoad(gltf, name, opts);
     } catch (e) {
       console.error(e);
       this.setStatus(`Failed to parse ${name}`);
     }
   };
 
-  // ---------- internals ----------
-
-  private afterLoad(gltf: import("three/examples/jsm/loaders/GLTFLoader.js").GLTF, label: string) {
+  // ---- internals
+  private afterLoad(
+    gltf: import("three/examples/jsm/loaders/GLTFLoader.js").GLTF,
+    label: string,
+    opts?: LoadOptions
+  ) {
     this.clearCurrent();
 
     this.currentRoot = gltf.scene || gltf.scenes?.[0] || null;
     if (!this.currentRoot) throw new Error("No scene in GLTF");
 
-    this.turntable.add(this.currentRoot);
+    this.modelPivot.add(this.currentRoot);  // <— add under modelPivot
     this.ensureVisible(this.currentRoot);
 
     this.mixer = new THREE.AnimationMixer(this.currentRoot);
+    this.mixer.removeEventListener("finished", this.handleFinished as any);
+    this.mixer.addEventListener("finished", this.handleFinished as any);
+
     const clip = gltf.animations?.[0];
-    if (clip) this.mixer.clipAction(clip).play();
+    this.lastDurationMs = clip ? Math.max(1, Math.round(clip.duration * 1000)) : null;
+
+    if (clip) {
+      const action = this.mixer.clipAction(clip);
+      if (opts?.loopForever) {
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.clampWhenFinished = false;
+      } else if (opts?.loopOnce !== false) {
+        action.setLoop(THREE.LoopOnce, 0);
+        action.clampWhenFinished = true;
+      }
+      action.reset();
+      action.time = 0;
+      this.mixer.setTime(0);
+      action.play();
+    }
+
+    // Static GLB fallback
+    this.clearFinishTimer();
+    if (!clip) {
+      const ms = Math.max(300, opts?.fallbackMs ?? 1200);
+      this.finishTimer = window.setTimeout(() => this.handleFinished(), ms) as unknown as number;
+    }
 
     this.setStatus(`Loaded: ${label}`);
+  }
+
+  private handleFinished = () => {
+    this.clearFinishTimer();
+    this.resolveFinishWaiters();
+    if (this.onClipFinished) {
+      try { this.onClipFinished(); } catch (e) { console.error(e); }
+    }
+  };
+
+  private waitForFinishOrDuration(token: number) {
+    return new Promise<void>((resolve) => {
+      if (token !== this.queueToken) { resolve(); return; }
+      this.finishWaiters.push(resolve);
+      if (this.lastDurationMs && this.lastDurationMs > 0) {
+        const t = window.setTimeout(() => {
+          if (token === this.queueToken) this.handleFinished();
+        }, this.lastDurationMs + AsciiBadger.PAD_MS) as unknown as number;
+        const clear = () => clearTimeout(t);
+        this.finishWaiters.push(clear);
+      }
+    });
+  }
+
+  private resolveFinishWaiters() {
+    const list = this.finishWaiters.splice(0);
+    for (const fn of list) { try { fn(); } catch {} }
+  }
+
+  private clearFinishTimer() {
+    if (this.finishTimer !== null) {
+      clearTimeout(this.finishTimer as unknown as number);
+      this.finishTimer = null;
+    }
   }
 
   private setStatus = (s: string) => this.statusSetter?.(s);
 
   private clearCurrent() {
+    this.clearFinishTimer();
+
     if (this.currentRoot) {
-      this.turntable.remove(this.currentRoot);
+      this.modelPivot.remove(this.currentRoot); // <— remove from modelPivot
       this.currentRoot.traverse((o: any) => {
         if (o.geometry) o.geometry.dispose?.();
         if (o.material && o.material.dispose) o.material.dispose();
       });
     }
     if (this.skeletonHelper) {
-      this.turntable.remove(this.skeletonHelper);
+      this.modelPivot.remove(this.skeletonHelper); // <— remove from modelPivot
       (this.skeletonHelper.geometry as any)?.dispose?.();
       (this.skeletonHelper.material as any)?.dispose?.();
       this.skeletonHelper = null;
     }
-    if (this.mixer) this.mixer.uncacheRoot(this.currentRoot as any);
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+      this.mixer.removeEventListener("finished", this.handleFinished as any);
+      this.mixer.uncacheRoot(this.currentRoot as any);
+    }
     this.currentRoot = null;
     this.mixer = null;
     if (this.plate) {
@@ -257,7 +416,6 @@ export class AsciiBadger {
     const dist = radius * 3.2;
     this.camera.position.set(0, radius * 1.1, dist);
 
-    // Older OrbitControls typings miss these members; assign via `any`.
     const oc = this.controls as any;
     oc.target?.set(0, radius * 0.55, 0);
     oc.minDistance = radius * 1.1;
@@ -265,6 +423,9 @@ export class AsciiBadger {
     this.controls.update();
 
     this.key.position.set(radius * 2.0, radius * 1.2, 0);
+
+    // Apply the current model offset (positive ⇒ down on screen)
+    this.modelPivot.position.y = -this.modelOffsetY;
   }
 
   private ensureVisible(obj: THREE.Object3D) {
@@ -275,7 +436,7 @@ export class AsciiBadger {
     if (!hasGeo) {
       this.skeletonHelper = new THREE.SkeletonHelper(obj);
       (this.skeletonHelper.material as any).linewidth = 2;
-      this.turntable.add(this.skeletonHelper);
+      this.modelPivot.add(this.skeletonHelper); // <— add under modelPivot
       this.fitAndStage(this.skeletonHelper);
     } else {
       this.fitAndStage(obj);
@@ -283,8 +444,8 @@ export class AsciiBadger {
   }
 
   private onResize = () => {
-    const w = this.mount.clientWidth;
-    const h = this.mount.clientHeight;
+    const w = Math.ceil(this.mount.clientWidth);
+    const h = Math.ceil(this.mount.clientHeight);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.effect.setSize(w, h);
@@ -300,7 +461,7 @@ export class AsciiBadger {
     requestAnimationFrame(this.animate);
   };
 
-  // ---- UI helpers for TSX ----
+  // ---- UI helpers used by TSX
   ui = {
     playPauseLabel: () => (this.playing ? LABELS.pause : LABELS.play),
     turntableLabel: () => (this.spin ? LABELS.ttOn : LABELS.ttOff),
