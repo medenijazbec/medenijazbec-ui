@@ -12,8 +12,12 @@ type SkillCard = {
 type ProjectCard = {
   title: string;
   blurb: string;
-  img: string; // path in /public
+  img: string;           // base/fallback image
+  srcSet?: string;       // responsive sources
+  sizes?: string;        // sizes hint
+  alt?: string;          // optional alt override
 };
+
 
 const ICONS: Record<string, string> = {
   // Core web
@@ -28,9 +32,9 @@ const ICONS: Record<string, string> = {
   "ASP.NET Core": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg",
   "ASP.NET Web APIs": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg",
   "ASP.NET Identity": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg",
-  "C# Windows Forms": "https://cdn.simpleicons.org/windows",
+  "C# Windows Forms": "/icons/wforms.svg",
   ".NET MAUI": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg",
-  ".NET WPF": "https://cdn.simpleicons.org/windows",
+  
   ".NET WCF": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg",
   Blazor: "https://cdn.simpleicons.org/blazor",
   gRPC: "https://grpc.io/img/logos/grpc-logo.svg",
@@ -108,6 +112,19 @@ Optuna: "https://cdn.simpleicons.org/optuna",
 MLflow: "https://cdn.simpleicons.org/mlflow",
 Unsloth: "https://avatars.githubusercontent.com/u/170044110?s=200&v=4",
 
+  // OS (new)
+  "Ubuntu Server": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ubuntu/ubuntu-plain.svg",
+  "Debian Linux": "https://cdn.simpleicons.org/debian",
+  Debian: "https://cdn.simpleicons.org/debian", // alias if you ever list "Debian"
+
+  // Multimedia plugins (new — use local assets you place in /public/icons/)
+  "Boris FX": "/icons/borisfx.svg",
+  
+  BCC: "/icons/borisfx-bcc.svg", // handy alias
+
+  // JetBrains IDEs
+  PyCharm: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pycharm/pycharm-original.svg",
+  "PyCharm IDE": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pycharm/pycharm-original.svg",
 
 };
 
@@ -129,8 +146,7 @@ const skillCards: SkillCard[] = [
       "REST",
       "OAuth 2.0",
       "C#",
-      "MySQL",
-      "PostgreSQL",
+
     ],
   },
   {
@@ -149,7 +165,7 @@ const skillCards: SkillCard[] = [
       "ASP.NET Web APIs",
       "C# Windows Forms",
       ".NET MAUI",
-      ".NET WPF",
+      
       ".NET WCF",
       "Blazor",
     ],
@@ -158,7 +174,7 @@ const skillCards: SkillCard[] = [
     title: "Databases & Data Management",
     blurb:
       "Relational DBs, schema design, integrations, and query optimization.",
-    skills: ["MySQL", "MySQLi", "PostgreSQL"],
+    skills: ["MySQL", "PostgreSQL"],
   },
   {
     title: "DevOps, Orchestration & Integration",
@@ -168,34 +184,38 @@ const skillCards: SkillCard[] = [
       "Git",
       "Docker",
       "Portainer.io",
-      "TrueNAS SCALE",
+      
       "RESTful services",
       "gRPC",
       "OAuth 2.0",
     ],
   },
+
   {
     title: "Design, Multimedia & Editing",
     blurb:
       "Basic design and media editing for assets, presentations, and content.",
-    skills: ["Photoshop", "Sony Vegas Pro"],
+    skills: ["Photoshop", "Sony Vegas Pro", "Boris FX", "Boris FX BCC"],
   },
-  {
+
+    {
     title: "Operating Systems & Development Environments",
     blurb:
       "Daily platforms and environments for development, testing, and ops.",
     skills: [
-      "TrueNAS CORE",
+      "TrueNAS SCALE",
       "Linux",
       "Fedora Linux",
       "Ubuntu",
+      "Ubuntu Server",
+      "Debian Linux",
       "Visual Studio",
       "Visual Studio Code",
       "IntelliJ IDEA",
-      "Eclipse",
-      "Vim",
-    ],
+      "PyCharm",          
+         ],
   },
+
   {
   title: "AI & Machine Learning",
   blurb:
@@ -215,39 +235,79 @@ const skillCards: SkillCard[] = [
 },
 
 ];
-
 const projects: ProjectCard[] = [
   {
     title: "“Poor Man’s” Supercomputer",
     blurb:
       "8× GPUs @ 24 GB VRAM each (≈192 GB total) for high-throughput AI inference. Focus on parallelism, queuing, batching, and cost-effective scaling.",
-    img: "/supercomputer.png",
+    img: "/projects/supercomputer-860.jpg",
+    srcSet: `
+      /projects/supercomputer-600.jpg 600w,
+      /projects/supercomputer-860.jpg 860w,
+      /projects/supercomputer-1280.jpg 1280w,
+      /projects/supercomputer-1720.jpg 1720w
+    `,
+    sizes: "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw",
+    alt: "“Poor Man’s” Supercomputer",
   },
   {
     title: "Quad-Vision: Digital Night-Vision + Thermal Hybrid",
     blurb:
       "Synchronized digital night-vision with thermal overlay. Goal: low-latency fusion, calibration, and robust recording.",
-    img: "/nightvisionquads.png",
+    img: "/projects/quadvision-860.jpg",
+    srcSet: `
+      /projects/quadvision-600.jpg 600w,
+      /projects/quadvision-860.jpg 860w,
+      /projects/quadvision-1280.jpg 1280w,
+      /projects/quadvision-1720.jpg 1720w
+    `,
+    sizes: "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw",
+    alt: "Quad-Vision: Digital Night-Vision + Thermal Hybrid",
   },
   {
     title: "Hypertrophy Metrics (Expansion)",
     blurb:
       ".NET MAUI app + custom API for planning/logging training: mesocycles, sessions, exercises, sets, reps, load, and RIR. Live charts on the Fitness page.",
-    img: "/hypertrophymetrics.png",
+    img: "/projects/hypertrophy-860.jpg",
+    srcSet: `
+      /projects/hypertrophy-600.jpg 600w,
+      /projects/hypertrophy-860.jpg 860w,
+      /projects/hypertrophy-1280.jpg 1280w,
+      /projects/hypertrophy-1720.jpg 1720w
+    `,
+    sizes: "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw",
+    alt: "Hypertrophy Metrics (Expansion)",
   },
   {
     title: "ADE — Autonomous Development Environment",
     blurb:
       "My own ChatGPT-style UI (not an OpenUI fork) with React + TypeScript and a .NET backend. Agent collaboration in containers/VMs with an emphasis on AI parallelism.",
-    img: "/ade.png",
+    img: "/projects/ade-860.jpg",
+    srcSet: `
+      /projects/ade-600.jpg 600w,
+      /projects/ade-860.jpg 860w,
+      /projects/ade-1280.jpg 1280w,
+      /projects/ade-1720.jpg 1720w
+    `,
+    sizes: "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw",
+    alt: "ADE — Autonomous Development Environment",
   },
   {
     title: "Samsung Health Data Puller & Charts",
     blurb:
       "Service to pull Samsung Health data and render reliable charts/dashboards. Feeds my Fitness page with personal metrics.",
-    img: "/samsungdata.png",
+    img: "/projects/samsungdata-860.jpg",
+    srcSet: `
+      /projects/samsungdata-600.jpg 600w,
+      /projects/samsungdata-860.jpg 860w,
+      /projects/samsungdata-1280.jpg 1280w,
+      /projects/samsungdata-1720.jpg 1720w
+    `,
+    sizes: "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw",
+    alt: "Samsung Health Data Puller & Charts",
   },
 ];
+
 
 const About: React.FC = () => {
   // ===== Tilt on hover =====
@@ -348,8 +408,7 @@ const About: React.FC = () => {
     I'm <span className={styles.accent}>Medeni Jazbec</span>.
   </h1>
   <p className={styles.lead}>
-    I’m <strong>22</strong>. I started going to the gym in <strong>2021</strong> and it’s
-    still the best decision I’ve ever made. Below are some of my hobbies and interests.
+    I’m <strong>22</strong>. I started going to the gym in <strong>2021</strong>, a certified bulkster. Below are some of my hobbies and interests.
   </p>
 
   <ul className={styles.hobbyGrid}>
@@ -510,7 +569,27 @@ const About: React.FC = () => {
                   onMouseEnter={handleMove}
                 >
                   <div className={styles.imageWrap}>
-                    <img src={p.img} alt={p.title} className={styles.image} />
+                    {p.title === "“Poor Man’s” Supercomputer" ? (
+                    <img
+                      src={p.img}
+                      srcSet={p.srcSet}
+                      sizes={p.sizes ?? "(max-width: 560px) 80vw, (min-width: 1720px) 860px, 50vw"}
+                      alt={p.alt ?? p.title}
+                      className={styles.image}
+                      loading="lazy"
+                      decoding="async"
+                    />
+
+                    ) : (
+                      <img
+                        src={p.img}
+                        alt={p.title}
+                        className={styles.image}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
+
                   </div>
                   <div className={styles.overlay}>
                     <h3 className={styles.overlayTitle}>{p.title}</h3>

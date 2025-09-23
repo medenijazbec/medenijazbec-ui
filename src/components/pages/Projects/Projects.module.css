@@ -39,10 +39,11 @@
   width: min(96vw, 1920px);
   aspect-ratio: 16 / 9;
   margin: 18px auto 12px auto;
-  border: 1px solid var(--stage-border);
-  background: radial-gradient(120% 85% at 50% 0%, var(--stage-grad-a) 0%, var(--stage-grad-b) 60%, var(--stage-grad-c) 100%);
+  border: none;            /* ⟵ remove the green 1px border */
+  background: transparent; /* ⟵ remove the green gradient; show page bg */
   overflow: hidden;
 }
+
 
 /* ================== ASCII layers ================== */
 .ascii{

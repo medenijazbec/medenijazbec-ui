@@ -206,6 +206,11 @@ export default function ProjectsPage() {
   const pillRedRef = useRef<HTMLPreElement | null>(null);
   const pillBlueRef = useRef<HTMLPreElement | null>(null);
 
+  /* ↓ sections we will scroll to */
+  const softwareRef = useRef<HTMLElement | null>(null);
+  const hardwareRef = useRef<HTMLElement | null>(null);
+
+
   const [mode, setMode] = useState<Mode>("default");
   const [locked, setLocked] = useState<Mode | null>(null); // ← lock after click
 
@@ -510,6 +515,19 @@ export default function ProjectsPage() {
   const onClickRed = () => toggleLock("hardware", "red");
   const onClickBlue = () => toggleLock("software", "blue");
 
+  /* Smooth autoscroll when a section becomes active */
+  const scrollTo = (el: HTMLElement | null) => {
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - 12; // small breathing room
+    window.scrollTo({ top: y, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (locked === "software") scrollTo(softwareRef.current);
+    if (locked === "hardware") scrollTo(hardwareRef.current);
+  }, [locked]);
+
+
   return (
     <div className={styles.page}>
       <Navbar overlay brand="medenijazbec.pro" />
@@ -600,8 +618,18 @@ export default function ProjectsPage() {
         </div>
 
         {/* Only render project lists after a click lock */}
-        {locked === "software" && <SoftwareProjects />}
-        {locked === "hardware" && <HardwareProjects />}
+                {locked === "software" && (
+          <section ref={softwareRef} id="software-projects" aria-label="Software Projects">
+            <SoftwareProjects />
+          </section>
+        )}
+
+                {locked === "hardware" && (
+          <section ref={hardwareRef} id="hardware-projects" aria-label="Hardware Projects">
+            <HardwareProjects />
+          </section>
+        )}
+
       </main><FooterMatrix overlay={false} />
     </div>
     
