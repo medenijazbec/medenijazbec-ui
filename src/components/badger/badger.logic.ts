@@ -1,3 +1,4 @@
+// path: honey_badger_ui/src/components/badger/badger.logic.ts
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -30,11 +31,8 @@ import {
 })();
 
 export type LoadOptions = {
-  /** Play the first (only) GLTF animation ONCE and clamp. (default true) */
   loopOnce?: boolean;
-  /** Loop the animation forever (overrides loopOnce). */
   loopForever?: boolean;
-  /** If the GLB has no animation, advance after this many ms. */
   fallbackMs?: number;
 };
 
@@ -51,8 +49,8 @@ export class AsciiBadger {
   private lightPivot: THREE.Object3D;
 
   private turntable: THREE.Group;
-  private modelPivot: THREE.Group;           // <— NEW: holds only the model
-  private plate: THREE.Mesh | null = null;
+  private modelPivot: THREE.Group; // holds only the model
+  private plate: THREE.Mesh | null = null;   // saucer
 
   private loader: GLTFLoader;
   private draco: DRACOLoader | null = null;
@@ -63,26 +61,32 @@ export class AsciiBadger {
 
   private playing = true;
   private spin = false;
-
   private spinLight = false;
 
   private clock = new THREE.Clock();
 
-  // sequencing
+  // queue + duration
   private onClipFinished: (() => void) | null = null;
   private finishTimer: number | null = null;
-
-  // queue control
   private queueActive = false;
   private queueToken = 0;
-
-  // duration + waiters
   private finishWaiters: Array<() => void> = [];
   private lastDurationMs: number | null = null;
   private static readonly PAD_MS = 40;
 
-  // model offset (positive values move the character down on screen)
+  // Offsets (positive = down on screen ⇒ negative world-Y)
   private modelOffsetY = 0;
+  private saucerOffsetY = 0;
+
+  // Zoom / scale (1 = default)
+  private modelZoom = 1;
+  private saucerZoom = 1;
+  private cameraZoom = 1;
+
+  // Base measurements computed per loaded model
+  private baseRadius = 120;        // inferred “stage” radius
+  private baseCamY = 120;          // camera Y before zoom
+  private baseCamDist = 360;       // camera Z before zoom
 
   constructor(private mount: HTMLElement, private statusSetter?: (s: string) => void) {
     this.scene = new THREE.Scene();
@@ -96,11 +100,8 @@ export class AsciiBadger {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.effect = new AsciiEffect(this.renderer, ASCII_CHARSET, { invert: true, resolution: 0.22 });
 
-    // Make the ASCII DOM fill its container
     const mountComputed = getComputedStyle(this.mount);
-    if (mountComputed.position === "static") {
-      this.mount.style.position = "relative";
-    }
+    if (mountComputed.position === "static") this.mount.style.position = "relative";
     this.mount.style.overflow = "hidden";
 
     const effEl = this.effect.domElement as HTMLElement;
@@ -116,7 +117,6 @@ export class AsciiBadger {
 
     this.mount.appendChild(effEl);
 
-    // Initial size (ceil to avoid sub-pixel gaps)
     const w0 = Math.ceil(this.mount.clientWidth);
     const h0 = Math.ceil(this.mount.clientHeight);
     this.effect.setSize(w0, h0);
@@ -135,10 +135,9 @@ export class AsciiBadger {
     this.lightPivot.add(this.key);
     this.key.position.set(200, 120, 0);
 
-    // Stage root + model pivot
     this.turntable = new THREE.Group();
-    this.modelPivot = new THREE.Group();      // <— NEW
-    this.turntable.add(this.modelPivot);      // model goes under modelPivot
+    this.modelPivot = new THREE.Group();
+    this.turntable.add(this.modelPivot);
     this.scene.add(this.turntable);
 
     this.loader = new GLTFLoader();
@@ -153,31 +152,52 @@ export class AsciiBadger {
     this.animate();
   }
 
-  // === Public: move only the badger (model) on Y ===
+  // --- Public setters ---
   /** Positive values move the character downward on screen. */
   setModelOffsetY = (y: number) => {
     this.modelOffsetY = y;
-    this.modelPivot.position.y = -y; // screen-down = negative world-Y
+    this.modelPivot.position.y = -y;
   };
-  
-// === Public: manual light positioning (also disables light spin) ===
-setLightYawDegrees = (deg: number) => {
-  this.spinLight = false;
-  this.lightPivot.rotation.y = THREE.MathUtils.degToRad(deg);
-};
 
-setLightHeight = (y: number) => {
-  this.spinLight = false;
-  this.key.position.y = y;
-};
+  /** Positive values move the saucer downward on screen. */
+  setSaucerOffsetY = (y: number) => {
+    this.saucerOffsetY = y;
+    if (this.plate) this.plate.position.y = -y;
+  };
 
-setLightDistance = (d: number) => {
-  this.spinLight = false;
-  // Light orbits around Y via the pivot; distance is the X offset before the pivot rotates it
-  this.key.position.x = d;
-};
+  /** Multiplier for model size (1 = default). */
+  setModelZoom = (m: number) => {
+    this.modelZoom = Math.max(0.4, m);
+    this.modelPivot.scale.setScalar(this.modelZoom);
+  };
 
-  // ---- lifecycle
+  /** Multiplier for saucer size (1 = default). */
+  setSaucerZoom = (m: number) => {
+    this.saucerZoom = Math.max(0.4, m);
+    if (this.plate) this.plate.scale.setScalar(this.saucerZoom);
+  };
+
+  /** Multiplier for camera distance/height (1 = default). */
+  setCameraZoom = (m: number) => {
+    this.cameraZoom = Math.max(0.5, m);
+    this.applyCamera();
+  };
+
+  // Light controls (disables spin)
+  setLightYawDegrees = (deg: number) => {
+    this.spinLight = false;
+    this.lightPivot.rotation.y = THREE.MathUtils.degToRad(deg);
+  };
+  setLightHeight = (y: number) => {
+    this.spinLight = false;
+    this.key.position.y = y;
+  };
+  setLightDistance = (d: number) => {
+    this.spinLight = false;
+    this.key.position.x = d;
+  };
+
+  // lifecycle
   dispose = () => {
     window.removeEventListener("resize", this.onResize);
     this.stopQueue();
@@ -189,21 +209,17 @@ setLightDistance = (d: number) => {
     this.clearFinishTimer();
   };
 
-  // ---- basic controls
-  togglePlay = () => this.setPlaying(!this.playing);
-  setPlaying = (v: boolean) => {
+  // basic controls
+  private setPlaying = (v: boolean) => {
     this.playing = v;
     if (this.mixer) this.mixer.timeScale = v ? 1 : 0;
   };
+  togglePlay = () => this.setPlaying(!this.playing);
   toggleTurntable = () => (this.spin = !this.spin);
   toggleLightSpin = () => (this.spinLight = !this.spinLight);
+  setOnClipFinished = (cb: (() => void) | null) => { this.onClipFinished = cb; };
 
-  setOnClipFinished = (cb: (() => void) | null) => {
-    this.onClipFinished = cb;
-  };
-
-  // ---- queue API
-  /** Play items strictly one-after-another; if the last has loopForever, it holds until replaced. */
+  // queue
   playQueue = (items: Array<QueueItem | string>) => {
     const normalized: QueueItem[] = items.map((it) =>
       typeof it === "string" ? { file: it, opts: { loopOnce: true, fallbackMs: 1200 } } : it
@@ -225,11 +241,8 @@ setLightDistance = (d: number) => {
             : { loopOnce: item.opts?.loopOnce !== false, fallbackMs: item.opts?.fallbackMs ?? 1200 }
         );
 
-        if (!wantsForever) {
-          await this.waitForFinishOrDuration(token);
-        } else {
-          break; // hold here forever until a new queue starts
-        }
+        if (!wantsForever) await this.waitForFinishOrDuration(token);
+        else break;
       }
       if (token === this.queueToken) this.queueActive = false;
     };
@@ -243,10 +256,9 @@ setLightDistance = (d: number) => {
     this.resolveFinishWaiters();
     this.setOnClipFinished(null);
   };
-
   isQueueActive = () => this.queueActive;
 
-  // ---- discovery
+  // discovery
   listAnimations = async (): Promise<string[]> => {
     try {
       const r = await fetch(`${ANIM_DIR}animations.json`, { cache: "no-cache" });
@@ -270,7 +282,7 @@ setLightDistance = (d: number) => {
     return [...FALLBACK_CLIPS];
   };
 
-  // ---- loading
+  // loading
   loadClipPath = async (fileName: string, opts?: LoadOptions) => {
     const path = `${ANIM_DIR}${fileName}`;
     this.setStatus(`Loading: ${path}`);
@@ -282,7 +294,6 @@ setLightDistance = (d: number) => {
       this.setStatus(`Failed: ${path}`);
     }
   };
-
   loadClipBuffer = async (arrayBuffer: ArrayBuffer, name = "buffer", opts?: LoadOptions) => {
     try {
       const gltf = await this.loader.parseAsync(arrayBuffer, "");
@@ -293,7 +304,6 @@ setLightDistance = (d: number) => {
     }
   };
 
-  // ---- internals
   private afterLoad(
     gltf: import("three/examples/jsm/loaders/GLTFLoader.js").GLTF,
     label: string,
@@ -304,7 +314,7 @@ setLightDistance = (d: number) => {
     this.currentRoot = gltf.scene || gltf.scenes?.[0] || null;
     if (!this.currentRoot) throw new Error("No scene in GLTF");
 
-    this.modelPivot.add(this.currentRoot);  // <— add under modelPivot
+    this.modelPivot.add(this.currentRoot);
     this.ensureVisible(this.currentRoot);
 
     this.mixer = new THREE.AnimationMixer(this.currentRoot);
@@ -360,33 +370,30 @@ setLightDistance = (d: number) => {
       }
     });
   }
-
   private resolveFinishWaiters() {
     const list = this.finishWaiters.splice(0);
     for (const fn of list) { try { fn(); } catch {} }
   }
-
   private clearFinishTimer() {
     if (this.finishTimer !== null) {
       clearTimeout(this.finishTimer as unknown as number);
       this.finishTimer = null;
     }
   }
-
   private setStatus = (s: string) => this.statusSetter?.(s);
 
   private clearCurrent() {
     this.clearFinishTimer();
 
     if (this.currentRoot) {
-      this.modelPivot.remove(this.currentRoot); // <— remove from modelPivot
+      this.modelPivot.remove(this.currentRoot);
       this.currentRoot.traverse((o: any) => {
         if (o.geometry) o.geometry.dispose?.();
         if (o.material && o.material.dispose) o.material.dispose();
       });
     }
     if (this.skeletonHelper) {
-      this.modelPivot.remove(this.skeletonHelper); // <— remove from modelPivot
+      this.modelPivot.remove(this.skeletonHelper);
       (this.skeletonHelper.geometry as any)?.dispose?.();
       (this.skeletonHelper.material as any)?.dispose?.();
       this.skeletonHelper = null;
@@ -398,6 +405,7 @@ setLightDistance = (d: number) => {
     }
     this.currentRoot = null;
     this.mixer = null;
+
     if (this.plate) {
       this.turntable.remove(this.plate);
       (this.plate.geometry as any)?.dispose?.();
@@ -425,36 +433,44 @@ setLightDistance = (d: number) => {
     rootOrHelper.scale.setScalar(scale);
 
     const radius = Math.max(size.x, size.z) * scale * 0.6 || 60;
+    this.baseRadius = radius;
+
     const geo = new THREE.CylinderGeometry(radius * 1.1, radius * 1.1, radius * 0.04, 64);
     const mat = new THREE.MeshStandardMaterial({ color: 0x0e3b2c, roughness: 1, metalness: 0 });
     this.plate = new THREE.Mesh(geo, mat);
-    this.plate.position.y = 0;
+    this.plate.position.y = -this.saucerOffsetY;
+    this.plate.scale.setScalar(this.saucerZoom);
     this.turntable.add(this.plate);
 
-    const dist = radius * 3.2;
-    this.camera.position.set(0, radius * 1.1, dist);
+    this.baseCamY = radius * 1.1;
+    this.baseCamDist = radius * 3.2;
+    this.applyCamera();
 
     const oc = this.controls as any;
     oc.target?.set(0, radius * 0.55, 0);
-    oc.minDistance = radius * 1.1;
-    oc.maxDistance = radius * 8.0;
+    oc.minDistance = radius * 1.1 * this.cameraZoom;
+    oc.maxDistance = radius * 8.0 * this.cameraZoom;
     this.controls.update();
 
     this.key.position.set(radius * 2.0, radius * 1.2, 0);
 
-    // Apply the current model offset (positive ⇒ down on screen)
+    // Apply offsets & zooms
     this.modelPivot.position.y = -this.modelOffsetY;
+    this.modelPivot.scale.setScalar(this.modelZoom);
+  }
+
+  private applyCamera() {
+    this.camera.position.set(0, this.baseCamY * this.cameraZoom, this.baseCamDist * this.cameraZoom);
+    this.camera.updateProjectionMatrix();
   }
 
   private ensureVisible(obj: THREE.Object3D) {
     let hasGeo = false;
-    obj.traverse((o: any) => {
-      if (o.isMesh || o.isSkinnedMesh || o.geometry) hasGeo = true;
-    });
+    obj.traverse((o: any) => { if (o.isMesh || o.isSkinnedMesh || o.geometry) hasGeo = true; });
     if (!hasGeo) {
       this.skeletonHelper = new THREE.SkeletonHelper(obj);
       (this.skeletonHelper.material as any).linewidth = 2;
-      this.modelPivot.add(this.skeletonHelper); // <— add under modelPivot
+      this.modelPivot.add(this.skeletonHelper);
       this.fitAndStage(this.skeletonHelper);
     } else {
       this.fitAndStage(obj);
@@ -479,7 +495,7 @@ setLightDistance = (d: number) => {
     requestAnimationFrame(this.animate);
   };
 
-  // ---- UI helpers used by TSX
+  // ---- UI helpers ----
   ui = {
     playPauseLabel: () => (this.playing ? LABELS.pause : LABELS.play),
     turntableLabel: () => (this.spin ? LABELS.ttOn : LABELS.ttOff),

@@ -58,3 +58,5 @@
 .hud > button:hover{
   border-color: rgba(0,255,102,.55);
 }
+.root { min-height: 0; }
+.stage { min-height: 0; height: 100%; }
