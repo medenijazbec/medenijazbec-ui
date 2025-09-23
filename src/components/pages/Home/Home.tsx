@@ -69,8 +69,7 @@ export default function Home() {
           <div className={styles.sideInner}>
             <h2 className={styles.sectionTitle}>Meet the Badger</h2>
             <p className={styles.muted}>
-              This little gremlin loves breakdancing and combat drills. Click the badger to trigger a
-              random move—then it’ll chill back to its idle loop.
+Watch out for the dog, it bites.
             </p>
 
             <form className={styles.promptCard} onSubmit={(e) => e.preventDefault()}>
@@ -79,7 +78,7 @@ export default function Home() {
                 <input id="badgerPrompt" className={styles.promptInput} placeholder="(coming soon) say hi..." disabled />
                 <button className={styles.promptBtn} disabled>Send</button>
               </div>
-              <small className={styles.promptHint}>Chat is not wired up yet.</small>
+              <small className={styles.promptHint}>Chat is not wired up yet. I'm still setting up the 192GB vram server for inference.</small>
             </form>
           </div>
         </aside>
