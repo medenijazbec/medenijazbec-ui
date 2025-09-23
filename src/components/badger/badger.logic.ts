@@ -62,8 +62,9 @@ export class AsciiBadger {
   private skeletonHelper: THREE.SkeletonHelper | null = null;
 
   private playing = true;
-  private spin = true;
-  private spinLight = true;
+  private spin = false;
+
+  private spinLight = false;
 
   private clock = new THREE.Clock();
 
@@ -158,6 +159,23 @@ export class AsciiBadger {
     this.modelOffsetY = y;
     this.modelPivot.position.y = -y; // screen-down = negative world-Y
   };
+  
+// === Public: manual light positioning (also disables light spin) ===
+setLightYawDegrees = (deg: number) => {
+  this.spinLight = false;
+  this.lightPivot.rotation.y = THREE.MathUtils.degToRad(deg);
+};
+
+setLightHeight = (y: number) => {
+  this.spinLight = false;
+  this.key.position.y = y;
+};
+
+setLightDistance = (d: number) => {
+  this.spinLight = false;
+  // Light orbits around Y via the pivot; distance is the X offset before the pivot rotates it
+  this.key.position.x = d;
+};
 
   // ---- lifecycle
   dispose = () => {

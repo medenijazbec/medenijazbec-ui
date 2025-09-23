@@ -88,11 +88,8 @@ export default function Home() {
       {/* ABOUT */}
       <section ref={aboutRef} id="about" className={styles.section}>
         <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>About</h2>
-          <p className={styles.muted}>
-            Brief bio, tools you enjoy, and links. This anchors the navbar’s “About”
-            button and can be replaced with your real content.
-          </p>
+          
+         
         </div>
       </section>
 
