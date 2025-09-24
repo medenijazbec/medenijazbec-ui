@@ -51,7 +51,8 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
   const [color, setColor] = useState<ColorKey>("green");
 
   const { pathname, hash } = useLocation();
-  const aboutActive = pathname === "/" && hash === "#about";
+  const aboutActive = pathname.startsWith("/about") || (pathname === "/" && hash === "#about");
+
   const navigate = useNavigate();
 
   // Theme color hookup
