@@ -438,7 +438,7 @@ const About: React.FC = () => {
         <span className={styles.accent}><b>Hardware</b></span>
       </div>
       <p className={styles.hobbyBody}>
-        custom PCs, server builds, inference servers, rigs & boards.
+        custom PCs, server builds, inference servers, BIOS modding, cabling.
       </p>
     </li>
 
@@ -488,7 +488,7 @@ const About: React.FC = () => {
         <span className={styles.accent}><b>Firearms</b></span>
       </div>
       <p className={styles.hobbyBody}>
-        strong interest, but at the moment still just larping.
+        Guns are cool, man.
       </p>
     </li>
   </ul>

@@ -230,8 +230,8 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false, leadMs = 0
 
     const SWIRL_DELAY = 0.0;        // seconds
     const revealStart = 0.0;        // when reveal begins (after swirl starts)
-    const revealDurIn = 5.0;        // reveal duration (fade in)
-    const revealDurOut = 3.1;       // reverse duration (fade out)
+    const revealDurIn = 3.0;        // reveal duration (fade in)
+    const revealDurOut = 4.1;       // reverse duration (fade out)
     const revealFireAt = revealStart + revealDurIn; // full reveal time
     let t0 = performance.now();
     let raf = 0;
