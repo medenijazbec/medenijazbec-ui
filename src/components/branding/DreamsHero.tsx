@@ -41,9 +41,9 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false, leadMs = 0
     /* --------- background filler line (swirl source) --------- */
     const RAW_QUOTES = String.raw`
 \Brake fuild? No you can't be that strong.             
-\Birds flu? Yeah they do that.          
-\Peanut? At the same time?         
-\Fear and doubt are social constructs to keep you in line.       
+\Birds flu? Yeah they do that.                            
+\Peanut? At the same time?                        
+\Fear and doubt are social constructs to keep you in line.                    
 \Follow your dreams and reconnect with your inner child.
 \Iran? No I walked there.       
 \I am the Lorax, I speak for the trees.
@@ -52,10 +52,10 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false, leadMs = 0
 \Fish sticks? Yea if you throw it hard enough.
 \He always betrays them, he always!            
 \Can I buy some crude oil?             
-\I am the Senate.
+\I am the Senate.               
 \Uau            
-\Give drug to grug
-\Ahj
+\Give drug to grug                  
+\Ahj     
 \F1 im a scav, f1                           
 \I am once again asking for your financial support              
 \E služivej e to naša točka
@@ -328,87 +328,90 @@ const DreamsHero: React.FC<Props> = ({ onRevealDone, reverse = false, leadMs = 0
       // Precompute a blank row to quickly clear overlay when needed
       const blankRow = " ".repeat(cols);
 
-      for (let y = 0; y < totalRows; y++) {
-        let rowStr = "";
-        let overlayRowStr = ""; // only logo outline here (or blanks)
-        const s0 = 1 - 2 * (y / totalRows);
-        const s = s0 * COORD_SCALE;
+for (let y = 0; y < totalRows; y++) {
+  // build chars in arrays (join once) to avoid O(n^2) concat cost
+  const rowArr: string[] = new Array(cols);
+  const overlayArr: string[] | null = overlayActive ? new Array(cols) : null;
 
-        for (let x = 0; x < cols; x++) {
-          const o0 = 2 * (x / cols) - 1;
-          const o = o0 * COORD_SCALE;
+  // per-row constants
+  const s0 = 1 - 2 * (y / totalRows);
+  const s = s0 * COORD_SCALE;
 
-          const d = Math.sqrt(o * o + s * s);
-          const l = (BASE_SPEED * t) / Math.pow(Math.max(0.1, d), RING_FALLOFF);
-          const sinL = Math.sin(l), cosL = Math.cos(l);
+  // logo row shortcuts
+  const inLogoRow = y >= logoTop && y < logoTop + logoRows.length;
+  const ly = inLogoRow ? (y - logoTop) : 0;
+  const outlineRow = inLogoRow ? logoOutlineRows[ly] : null;
+  const insideRow  = inLogoRow ? logoInsideMask[ly] : null;
 
-          const u = o * sinL - s * cosL;
-          let m = Math.round(((o * cosL + s * sinL) + 1) / 2 * cols);
-          let h = Math.round(((u + 1) / 2) * totalRows) % totalRows;
+  for (let x = 0; x < cols; x++) {
+    // base swirl coords
+    const o0 = 2 * (x / cols) - 1;
+    const o = o0 * COORD_SCALE;
 
-          if (m < 0) m = 0; if (m >= cols) m = cols - 1;
-          if (h < 0) h = 0; if (h >= totalRows) h = totalRows - 1;
+    // slightly faster & stable than sqrt(o*o+s*s)
+    const d = Math.hypot(o, s);
+    const denom = Math.max(0.1, d);
+    const l = (BASE_SPEED * t) / Math.pow(denom, RING_FALLOFF);
+    const sinL = Math.sin(l), cosL = Math.cos(l);
 
-          let ch = rows[h][m] || " ";
+    const u = o * sinL - s * cosL;
 
-          // ----- overlay outline & clear interior (mask) with FADE -----
-          const withinLogo =
-            y >= logoTop && y < logoTop + logoRows.length &&
-            x >= logoLeft && x < logoLeft + logoCols;
+    let m = Math.round(((o * cosL + s * sinL) + 1) * 0.5 * cols);
+    let h = Math.round(((u + 1) * 0.5) * totalRows) % totalRows;
 
-          let overlayCh = " "; // default: nothing on overlay
+    if (m < 0) m = 0; else if (m >= cols) m = cols - 1;
+    if (h < 0) h = 0; else if (h >= totalRows) h = totalRows - 1;
 
-          if (withinLogo) {
-            const ly = y - logoTop;
-            const lx = x - logoLeft;
+    const rowH = rows[h];
+    let chCode = (rowH && rowH.charCodeAt(m)) || 32; // 32 = space
 
-            const outlineChar =
-              (logoOutlineRows[ly] && logoOutlineRows[ly][lx]) || " ";
-            const isInside =
-              !!(logoInsideMask[ly] && logoInsideMask[ly][lx]);
+    // overlay logic (only touches overlayArr when active)
+    if (inLogoRow) {
+      const lx = x - logoLeft;
+      if (lx >= 0 && lx < logoCols) {
+        const outlineChar = outlineRow ? (outlineRow[lx] || " ") : " ";
+        const isInside = !!(insideRow && insideRow[lx]);
 
-            if (outlineChar !== " ") {
-              // Base grid gets blended (as before)
-              const blended = Math.round(
-                ch.charCodeAt(0) * (1 - phaseE) + outlineChar.charCodeAt(0) * phaseE
-              );
-              ch = String.fromCharCode(blended);
-
-              // Overlay shows ONLY the outline char while active
-              if (overlayActive) {
-                overlayCh = ch; // render on overlay only if active
-              } else {
-                overlayCh = " ";
-              }
-            } else if (isInside) {
-              const blendedToSpace = Math.round(
-                ch.charCodeAt(0) * (1 - phaseE) + 32 * phaseE
-              );
-              ch = String.fromCharCode(blendedToSpace);
-              // overlayCh stays space (no RGB on cleared interior)
-            }
-          }
-          // -------------------------------------------------------------
-
-          rowStr += ch;
-          overlayRowStr += overlayCh;
+        if (outlineChar !== " ") {
+          const blended = Math.round(
+            chCode * (1 - phaseE) + outlineChar.charCodeAt(0) * phaseE
+          );
+          chCode = blended;
+          if (overlayArr) overlayArr[x] = String.fromCharCode(blended);
+        } else if (isInside) {
+          chCode = Math.round(chCode * (1 - phaseE) + 32 * phaseE);
+          if (overlayArr) overlayArr[x] = " ";
+        } else if (overlayArr) {
+          overlayArr[x] = " ";
         }
-
-        // update base grid
-        if (textElems[y]) textElems[y].textContent = rowStr;
-
-        // update overlay rows
-        if (overlayElems[y]) {
-          if (overlayActive) {
-            overlayElems[y].textContent = overlayRowStr;
-          } else {
-            // fully clear the overlay row when inactive (post-reverse)
-            if (overlayElems[y].textContent !== blankRow) {
-              overlayElems[y].textContent = blankRow;
-            }
-          }
-        }
+      } else if (overlayArr) {
+        overlayArr[x] = " ";
       }
+    } else if (overlayArr) {
+      overlayArr[x] = " ";
+    }
+
+    rowArr[x] = String.fromCharCode(chCode);
+  }
+
+  const rowStr = rowArr.join("");
+  if (textElems[y] && textElems[y].textContent !== rowStr) {
+    textElems[y].textContent = rowStr; // write only if changed
+  }
+
+  if (overlayElems[y]) {
+    if (overlayActive) {
+      const overlayRowStr = overlayArr ? overlayArr.join("") : blankRow;
+      if (overlayElems[y].textContent !== overlayRowStr) {
+        overlayElems[y].textContent = overlayRowStr; // write only if changed
+      }
+    } else if (overlayElems[y].textContent !== blankRow) {
+      overlayElems[y].textContent = blankRow; // clear once, then leave it
+    }
+  }
+}
+
+    
     }
 
     raf = requestAnimationFrame(animate);
