@@ -10,9 +10,9 @@ import VSLogin from "@/components/auth/VSLogin/VSLogin";
 import AdminShowcase from "@/components/admin/AdminShowcase/AdminShowcase";
 import ProjectsAdmin from "./components/admin/ProjectsAdmin/ProjectsAdmin";
 import AboutPage from "@/components/pages/About/About";
-
 import AdminFitness from "@/components/admin/AdminFitness/AdminFitness";
 import FitnessPage from "@/components/pages/Fitness/Fitness";
+import AdminMarket from "./components/admin/AdminMarket/AdminMarket";
 
 function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   const { isAuthed, roles } = useAuth();
@@ -42,6 +42,14 @@ export default function App() {
             element={
               <RequireAuth role="Admin">
                 <AdminShowcase />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/market"
+            element={
+              <RequireAuth role="Admin">
+                <AdminMarket />
               </RequireAuth>
             }
           />
