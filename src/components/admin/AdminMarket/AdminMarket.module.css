@@ -1,8 +1,13 @@
+/* Prefer local OS Roboto; if unavailable, fall back to system UI */
+:root { --font-admin: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
 .root{
+  font-family: var(--font-admin);
   color: var(--phosphor, #00ff66);
   background: var(--bg, #071a14);
   min-height: 100vh;
 }
+
 .main{ width:min(1200px, 96vw); margin: 72px auto; padding: 16px; }
 
 .grid{
@@ -10,27 +15,43 @@
   grid-template-columns: repeat(12,1fr);
   gap: 12px;
 }
+
 .card{
   grid-column: span 4;
   border:1px solid rgba(16,185,129,0.25);
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(7,26,20,0.85);
   box-shadow: 0 0 18px rgba(16,185,129,0.35);
   padding: 12px;
 }
 .card h3{ margin:4px 0 8px; font-size: 16px; letter-spacing: .02em; }
 
-.table{ width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { border-top:1px solid rgba(16,185,129,.15); padding: 6px 8px; text-align:left; }
-.table th { font-weight:600; color: #66f2b4; }
+.table, .tableSm {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.table th, .table td, .tableSm th, .tableSm td {
+  border-top:1px solid rgba(16,185,129,.15);
+  padding: 6px 8px; text-align:left;
+}
+.table th, .tableSm th { font-weight:600; color: #66f2b4; }
 
 .kpi {
-  display:flex; gap:16px; flex-wrap:wrap;
+  display:flex; gap:12px; flex-wrap:wrap;
 }
-.kpi .pill {
+.pill {
   border:1px solid rgba(16,185,129,0.3);
   border-radius:999px;
   padding:8px 12px;
   background: rgba(7,26,20,0.6);
   font-size: 14px;
 }
+
+.meta { color: #8be0bf; font-size: 12px; }
+
+.alerts { display: grid; gap: 6px; font-size: 14px; }
+.ul { margin: 6px 0 0; padding-left: 16px; }
+
+.split { display:flex; gap: 16px; align-items:flex-start; }
+.subhead { color:#66f2b4; font-weight:600; margin-bottom:6px; }
