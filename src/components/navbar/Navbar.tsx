@@ -297,6 +297,7 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
               {isAdmin && (
                 <>
                   <Link className={`${styles.btn} ${pathname.startsWith("/admin/market") ? styles.active : ""}`} to="/admin/market">Market</Link>
+                  <Link className={`${styles.btn} ${pathname.startsWith("/admin/candle-trading") ? styles.active : ""}`} to="/admin/candle-trading">Candle trading</Link>
                   <Link className={`${styles.btn} ${pathname.startsWith("/admin/showcase") ? styles.active : ""}`} to="/admin/showcase">Admin Stats</Link>
                   <Link className={`${styles.btn} ${pathname.startsWith("/admin/projects") ? styles.active : ""}`} to="/admin/projects">Manage Projects</Link>
                   <Link className={`${styles.btn} ${pathname.startsWith("/admin/animgroups") ? styles.active : ""}`} to="/admin/animgroups">Manage Anim Groups</Link>

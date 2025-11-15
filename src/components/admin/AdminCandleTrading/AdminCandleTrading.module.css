@@ -1,0 +1,258 @@
+/* path: src/components/admin/AdminCandleTrading/AdminCandleTrading.module.css */
+
+.root {
+  --bg: #071a14;
+  --phosphor: #00ff66;
+  color: var(--phosphor);
+  background: var(--bg);
+  min-height: 100vh;
+  font-family: 'Roboto', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial,
+    'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+}
+
+.main {
+  padding-top: var(--nav-height, 3rem);
+}
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    padding: 0.9rem;
+  }
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.h1 {
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.meta {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  max-width: 520px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  padding: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent),
+    rgba(7, 26, 20, 0.9);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
+}
+
+.badge {
+  font-size: 0.78rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  background: rgba(7, 26, 20, 0.9);
+  opacity: 0.95;
+}
+
+.badgeDanger {
+  border-color: rgba(255, 107, 107, 0.8);
+  color: #fecaca;
+}
+
+.badgeSoft {
+  font-size: 0.78rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  opacity: 0.9;
+}
+
+.tableWrap {
+  margin-top: 0.4rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table th,
+.table td {
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid rgba(15, 118, 110, 0.4);
+  text-align: left;
+}
+
+.table th {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+  align-items: center;
+}
+
+.row label {
+  min-width: 150px;
+  font-size: 0.82rem;
+  opacity: 0.9;
+}
+
+.input,
+.select,
+.btn {
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  background: rgba(5, 15, 12, 0.9);
+  color: var(--phosphor);
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.input,
+.select {
+  min-width: 120px;
+}
+
+.input::placeholder {
+  opacity: 0.65;
+}
+
+.select {
+  padding-right: 1.8rem;
+}
+
+.btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btnPrimary {
+  border-color: rgba(16, 185, 129, 0.95);
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.2),
+    rgba(22, 163, 74, 0.4)
+  );
+  font-weight: 500;
+}
+
+.btnSm {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.8rem;
+}
+
+.pill {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+}
+
+.pillGood {
+  border-color: rgba(16, 185, 129, 0.8);
+  color: #bbf7d0;
+}
+
+.pillBad {
+  border-color: rgba(239, 68, 68, 0.85);
+  color: #fecaca;
+}
+
+.pillNeutral {
+  border-color: rgba(148, 163, 184, 0.7);
+  color: #e5e7eb;
+}
+
+.errorBox {
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: #fecaca;
+}
+
+.small {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  margin-top: 0.2rem;
+}
+
+.workerList {
+  margin-top: 0.4rem;
+}
+
+.workerRow {
+  cursor: pointer;
+}
+
+.workerRowSelected {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.sparkline {
+  margin-top: 0.4rem;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.4rem;
+  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent);
+}

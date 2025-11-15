@@ -13,6 +13,7 @@ import AboutPage from "@/components/pages/About/About";
 import AdminFitness from "@/components/admin/AdminFitness/AdminFitness";
 import FitnessPage from "@/components/pages/Fitness/Fitness";
 import AdminMarket from "./components/admin/AdminMarket/AdminMarket";
+import AdminCandleTrading from "./components/admin/AdminCandleTrading/AdminCandleTrading";
 
 function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   const { isAuthed, roles } = useAuth();
@@ -50,6 +51,14 @@ export default function App() {
             element={
               <RequireAuth role="Admin">
                 <AdminMarket />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/candle-trading"
+            element={
+              <RequireAuth role="Admin">
+                <AdminCandleTrading />
               </RequireAuth>
             }
           />
