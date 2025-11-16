@@ -1,4 +1,3 @@
-// src/controllers/adminMarket.ts
 import { http } from "@/api/api";
 
 // ---------- Types ----------
@@ -420,6 +419,53 @@ export type CleanerCapacityPayload = {
   };
 };
 
+// ----- Watchdog types -----
+export type DbHealth = {
+  name: string;
+  ok: boolean;
+  latencyMs: number;
+  dbUtcNow?: string | null;
+  error?: string | null;
+};
+
+export type WatchdogOverview = {
+  serverUtc: string;
+  uptimeSeconds: number;
+  uptimeHuman: string;
+  appDb: DbHealth;
+  alphaDb: DbHealth;
+  tradingDb: DbHealth;
+};
+
+// watchdog_cleanup_log stats
+export type WatchdogCleanupStats = {
+  totalRuns: number;
+  firstRunStartedAt?: string | null;
+
+
+  httpArticlesDeletedSum: number;
+  httpsArticlesDeletedSum: number;
+  status404DeletedSum: number;
+  status410DeletedSum: number;
+  badLinkArticlesDeletedSum: number;
+  mlArticlesDeletedSum: number;
+  newsArticlesDeletedSum: number;
+  pageCacheDeletedSum: number;
+  totalRowsDeletedSum: number;
+
+  lastRunStartedAt?: string | null;
+  lastRunFinishedAt?: string | null;
+  lastHttpArticlesDeleted?: number | null;
+  lastHttpsArticlesDeleted?: number | null;
+  lastStatus404Deleted?: number | null;
+  lastStatus410Deleted?: number | null;
+  lastBadLinkArticlesDeleted?: number | null;
+  lastMlArticlesDeleted?: number | null;
+  lastNewsArticlesDeleted?: number | null;
+  lastPageCacheDeleted?: number | null;
+  lastTotalRowsDeleted?: number | null;
+};
+
 // ---------- API CLIENT ----------
 
 export const adminMarket = {
@@ -505,4 +551,10 @@ export const adminMarket = {
     http.get<CleanerErrorIntelRow[]>("/api/etl/cleaner/error-intel"),
   cleanerCapacity: () =>
     http.get<CleanerCapacityPayload>("/api/etl/cleaner/capacity"),
+
+  // Watchdog – DB + cleanup stats
+  watchdogOverview: () =>
+    http.get<WatchdogOverview>("/api/watchdog/overview"),
+  watchdogCleanup: () =>
+    http.get<WatchdogCleanupStats>("/api/watchdog/cleanup"),
 };

@@ -18,6 +18,7 @@ import {
   useTorStatus,
   useCompletedCounter,
 } from "./adminMarket.logic";
+import WatchdogPanel from "./WatchdogPanel";
 
 export default function AdminMarket() {
   // Core ETL / infra hooks
@@ -346,6 +347,12 @@ ORDER BY worker_count DESC, tw.exit_ip;
         </section>
 
         <section style={{ marginBottom: 12 }} />
+
+ {/* Watchdog – DB health (App / NvdaAlpha / Trading 3313) */}
+        <WatchdogPanel />
+
+        <section style={{ marginBottom: 12 }} />
+
 
         {/* Maintenance / Recovery panel */}
         <section
