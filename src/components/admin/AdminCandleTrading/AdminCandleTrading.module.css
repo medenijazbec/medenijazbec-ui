@@ -1,58 +1,69 @@
 /* path: src/components/admin/AdminCandleTrading/AdminCandleTrading.module.css */
 
+/* Re-use the same admin font as AdminMarket */
+:root {
+  --font-admin: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
 .root {
-  --bg: #071a14;
-  --phosphor: #00ff66;
-  color: var(--phosphor);
-  background: var(--bg);
+  font-family: var(--font-admin);
+  color: var(--phosphor, #00ff66);
+  background: var(--bg, #071a14);
   min-height: 100vh;
-  font-family: 'Roboto', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial,
-    'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
 }
 
+/* Main container similar to AdminMarket.main */
 .main {
-  padding-top: var(--nav-height, 3rem);
+  width: min(1200px, 96vw);
+  margin: 72px auto 32px;
+  padding: 16px;
 }
 
+/* Inner wrapper = vertical stack of header + grid etc. */
 .wrap {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 12px;
 }
 
 @media (max-width: 900px) {
-  .wrap {
-    padding: 0.9rem;
+  .main {
+    margin: 64px auto 24px;
+    padding: 12px;
   }
 }
+
+/* ---------- Page header ---------- */
 
 .headerRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 8px;
   align-items: baseline;
   justify-content: space-between;
 }
 
 .h1 {
-  font-size: 1.7rem;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .meta {
-  font-size: 0.9rem;
-  opacity: 0.8;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.85;
   max-width: 520px;
+  color: #8be0bf;
 }
+
+/* ---------- Layout grid for cards ---------- */
 
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 1rem;
+  gap: 12px;
 }
 
 @media (max-width: 1000px) {
@@ -61,30 +72,35 @@
   }
 }
 
+/* ---------- Cards ---------- */
+
 .card {
-  padding: 0.9rem;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid rgba(16, 185, 129, 0.25);
-  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent),
-    rgba(7, 26, 20, 0.9);
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35);
+  background: rgba(7, 26, 20, 0.85);
+  padding: 12px;
+  box-shadow: none; /* match AdminMarket: no heavy glow */
 }
 
 .cardHeader {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
-  align-items: baseline;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 .h2 {
-  font-size: 1.1rem;
-  margin: 0 0 0.25rem;
+  font-size: 16px;
+  margin: 4px 0 4px;
+  letter-spacing: 0.02em;
+  color: #caffe1;
 }
 
+/* badges */
+
 .badge {
-  font-size: 0.78rem;
-  padding: 0.18rem 0.5rem;
+  font-size: 11px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(16, 185, 129, 0.55);
   background: rgba(7, 26, 20, 0.9);
@@ -97,64 +113,89 @@
 }
 
 .badgeSoft {
-  font-size: 0.78rem;
-  padding: 0.18rem 0.45rem;
+  font-size: 11px;
+  padding: 3px 7px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.6);
   background: rgba(15, 23, 42, 0.9);
   opacity: 0.9;
 }
 
+/* ---------- Tables ---------- */
+
 .tableWrap {
-  margin-top: 0.4rem;
+  margin-top: 6px;
   overflow-x: auto;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 13px;
 }
 
 .table th,
 .table td {
-  padding: 0.3rem 0.35rem;
-  border-bottom: 1px solid rgba(15, 118, 110, 0.4);
+  padding: 6px 8px;
+  border-top: 1px solid rgba(16, 185, 129, 0.15);
   text-align: left;
+  vertical-align: top;
+  word-break: break-word;
 }
 
 .table th {
-  font-weight: 500;
-  opacity: 0.9;
+  font-weight: 600;
+  color: #66f2b4;
 }
 
-.table tr:last-child td {
-  border-bottom: none;
+.table tr:first-child th,
+.table tr:first-child td {
+  border-top: none;
 }
+
+/* worker-specific rows */
+
+.workerList {
+  margin-top: 4px;
+}
+
+.workerRow {
+  cursor: pointer;
+}
+
+.workerRowSelected td {
+  background: rgba(16, 185, 129, 0.08);
+  font-weight: 600;
+}
+
+/* ---------- Form rows & controls ---------- */
 
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.35rem 0;
+  gap: 8px;
+  margin: 6px 0;
   align-items: center;
 }
 
 .row label {
   min-width: 150px;
-  font-size: 0.82rem;
+  font-size: 12px;
   opacity: 0.9;
 }
+
+/* inputs / selects / buttons */
 
 .input,
 .select,
 .btn {
-  border: 1px solid rgba(16, 185, 129, 0.6);
+  border: 1px solid rgba(16, 185, 129, 0.5);
   background: rgba(5, 15, 12, 0.9);
-  color: var(--phosphor);
-  padding: 0.4rem 0.55rem;
+  color: var(--phosphor, #00ff66);
+  padding: 6px 8px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 13px;
+  font-family: inherit;
 }
 
 .input,
@@ -170,44 +211,51 @@
   padding-right: 1.8rem;
 }
 
+/* button variants similar to AdminMarket.btn */
+
 .btn {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 4px;
+  line-height: 1.2;
+  min-height: 32px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #66f2b4;
 }
 
 .btnPrimary {
-  border-color: rgba(16, 185, 129, 0.95);
-  background: linear-gradient(
-    135deg,
-    rgba(16, 185, 129, 0.2),
-    rgba(22, 163, 74, 0.4)
-  );
+  border-color: rgba(16, 185, 129, 0.7);
+  background: rgba(16, 185, 129, 0.3);
+  color: #caffe1;
   font-weight: 500;
 }
 
 .btnSm {
-  font-size: 0.82rem;
-  padding: 0.3rem 0.5rem;
+  font-size: 12px;
+  padding: 4px 8px;
+  min-height: 26px;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
+/* ---------- Pills / status chips ---------- */
+
 .kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 }
 
 .pill {
-  font-size: 0.78rem;
-  padding: 0.15rem 0.5rem;
+  font-size: 12px;
+  padding: 4px 8px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(7, 26, 20, 0.6);
 }
 
 .pillGood {
@@ -225,34 +273,33 @@
   color: #e5e7eb;
 }
 
+/* ---------- Messages / misc ---------- */
+
 .errorBox {
-  margin-top: 0.3rem;
-  font-size: 0.82rem;
-  color: #fecaca;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #ff9a9a;
+  background: rgba(255, 0, 0, 0.08);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .small {
-  font-size: 0.78rem;
+  font-size: 11px;
   opacity: 0.85;
-  margin-top: 0.2rem;
+  margin-top: 2px;
+  color: #8be0bf;
 }
 
-.workerList {
-  margin-top: 0.4rem;
-}
-
-.workerRow {
-  cursor: pointer;
-}
-
-.workerRowSelected {
-  background: rgba(16, 185, 129, 0.12);
-}
+/* Sparkline container for quick stats (kept, but styled like a small card) */
 
 .sparkline {
-  margin-top: 0.4rem;
+  margin-top: 6px;
   border-radius: 8px;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  padding: 0.4rem;
-  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 6px 8px;
+  background: rgba(7, 26, 20, 0.6);
 }

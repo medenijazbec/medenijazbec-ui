@@ -1,0 +1,209 @@
+/* path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.module.css */
+
+.section{
+  margin-top: 1.25rem;
+  width: 100%;
+  color:#bfffe1;
+  font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
+
+.headerRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:1rem;
+  margin-bottom:.75rem;
+}
+
+.h2{
+  font-size:1.2rem;
+  margin:0 0 .35rem;
+}
+
+.meta{
+  font-size:.86rem;
+  opacity:.9;
+  color:#aef5d4;
+}
+
+.modeSwitch{
+  display:flex;
+  gap:.4rem;
+  align-items:center;
+  flex-shrink:0;
+}
+
+.modeBtn{
+  border:1px solid #b6ffe0;
+  background:rgba(7,26,20,0.6);
+  color:#bfffe1;
+  padding:.35rem .7rem;
+  border-radius:999px;
+  font-size:.82rem;
+  cursor:pointer;
+}
+.modeBtnActive{
+  border-color:#00ff66;
+  color:#00ff66;
+  box-shadow:0 0 8px rgba(0,255,102,0.4);
+}
+
+/* Controls row: watchlist + main symbol selector */
+.controlsRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:1rem;
+  margin-bottom:1rem;
+}
+
+.controlBlock{
+  min-width:0;
+  flex:1 1 260px;
+}
+
+.label{
+  font-size:.85rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#eafff4;
+  opacity:.9;
+  margin-bottom:.25rem;
+}
+
+.symbolPills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.35rem;
+  margin-bottom:.3rem;
+}
+
+.symbolPill{
+  display:inline-flex;
+  align-items:center;
+  gap:.3rem;
+  padding:.32rem .6rem;
+  border-radius:999px;
+  border:1px solid #b6ffe0;
+  background:rgba(7,26,20,0.6);
+  color:#c9ffe9;
+  font-size:.8rem;
+  cursor:pointer;
+}
+.symbolPillActive{
+  border-color:#00ff66;
+  color:#00ff66;
+  box-shadow:0 0 10px rgba(0,255,102,0.45);
+}
+.symbolCode{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+}
+.symbolName{
+  opacity:.9;
+}
+
+.select{
+  border:1px solid #b6ffe0;
+  background:rgba(7,26,20,0.6);
+  color:#00ff66;
+  padding:.4rem .55rem;
+  border-radius:8px;
+  font-size:.86rem;
+}
+
+/* Charts column: stacked, full-width cards */
+.chartsColumn{
+  display:flex;
+  flex-direction:column;
+  gap:1.1rem;
+  margin-top:.25rem;
+}
+
+/* Individual chart card */
+.chartCard{
+  width:100%;
+  min-height:420px;
+  border:1px solid #b6ffe0;
+  border-radius:10px;
+  background:rgba(7,26,20,0.9);
+  box-shadow:none;
+  padding:.85rem 1rem .9rem;
+  display:flex;
+  flex-direction:column;
+}
+
+.chartHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:.75rem;
+  margin-bottom:.4rem;
+}
+
+.chartTitle{
+  font-size:1.05rem;
+  font-weight:700;
+  color:#eafff4;
+}
+.chartSub{
+  font-size:.83rem;
+  color:#aef5d4;
+  opacity:.9;
+}
+
+.chartLegendHint{
+  display:flex;
+  gap:.35rem;
+  align-items:center;
+  font-size:.78rem;
+}
+
+.pillUp,
+.pillDown{
+  padding:.15rem .45rem;
+  border-radius:999px;
+  border:1px solid #b6ffe0;
+}
+.pillUp{ color:#00ff66; }
+.pillDown{ color:#ff6b6b; }
+
+.chartBody{
+  width:100%;
+  flex:1 1 auto;
+  min-height:340px;
+}
+
+/* Error text is defined but not used now; keeping in case you want it later */
+.errorText{
+  margin-top:.35rem;
+  font-size:.82rem;
+  color:#ff6b6b;
+}
+
+/* Apex tooltip tweaks, same vibe as fitness pages */
+.chartCard :global(.apexcharts-tooltip){
+  background: rgba(0,0,0,.8) !important;
+  color:#d1ffe6 !important;
+  border:1px solid rgba(0,255,102,.35) !important;
+  border-radius:9px !important;
+}
+.chartCard :global(.apexcharts-tooltip-title){
+  background:rgba(0,0,0,.4) !important;
+  border-bottom:1px solid rgba(0,255,102,.2) !important;
+}
+.chartCard :global(.apexcharts-legend-text){
+  color:#b6ffe0 !important;
+}
+
+/* Responsive: stack controls and allow charts to breathe */
+@media (max-width: 1020px){
+  .headerRow{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .modeSwitch{
+    align-self:flex-start;
+  }
+  .chartCard{
+    min-height:360px;
+  }
+}

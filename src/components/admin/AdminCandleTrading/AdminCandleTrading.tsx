@@ -9,6 +9,7 @@ import {
   useWorkerEquity,
   useMarketClock,
 } from "./adminCandleTrading.logic";
+import TradingChartsPanel from "./trandingCharts/TradingChartsPanel";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
@@ -125,9 +126,9 @@ const AdminCandleTrading: React.FC = () => {
               <h1 className={styles.h1}>Candle trading lab</h1>
               <p className={styles.meta}>
                 Tune the global switches for symbol / timeframe / data provider
-                and watch your 5 worker bots compete on live candles. Python
+                and watch your worker bots compete on live candles. Python
                 inserts raw candles + features into the <code>trading_candles</code>{" "}
-                schema; this page just reads via <code>NvdaTradingDbContext</code>.
+                schema; this page reads via <code>NvdaTradingDbContext</code>.
               </p>
             </div>
             <div className={styles.small}>
@@ -529,6 +530,9 @@ const AdminCandleTrading: React.FC = () => {
               </div>
             )}
           </section>
+
+          {/* NEW: Trading charts (candlesticks) */}
+          <TradingChartsPanel />
         </div>
       </main>
     </div>
