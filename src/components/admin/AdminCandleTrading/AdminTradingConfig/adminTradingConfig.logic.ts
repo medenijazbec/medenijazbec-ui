@@ -52,6 +52,25 @@ export type ApiKeyRow = {
   updatedAt: string;
 };
 
+// IP ↔ key history row from /api/trading/api-key-ip-history
+export type ApiKeyIpHistoryRow = {
+  historyId: number;
+  apiKeyId: number;
+  providerCode: string;
+  keyLabel: string | null;
+  apiKey: string;
+  isActive: boolean;
+  ipAddress: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  ipBurned: boolean;
+  ipRateLimitedAt: string | null;
+  ipNextAvailableAt: string | null;
+  dailyQuota: number | null;
+  perMinuteQuota: number | null;
+  callsToday: number;
+};
+
 // ---------- Trading settings hook ----------
 
 export type TradingSettingsForm = {
@@ -62,6 +81,13 @@ export type TradingSettingsForm = {
   initialCapitalPerWorker: string;
   historicalCandles: string;
 };
+
+export async function fetchApiKeyIpHistory(): Promise<ApiKeyIpHistoryRow[]> {
+  const res = await http.get<ApiKeyIpHistoryRow[]>(
+    "/api/trading/api-key-ip-history"
+  );
+  return res ?? [];
+}
 
 export function useTradingSettingsAdmin() {
   const [rows, setRows] = useState<TradingSettingRow[]>([]);

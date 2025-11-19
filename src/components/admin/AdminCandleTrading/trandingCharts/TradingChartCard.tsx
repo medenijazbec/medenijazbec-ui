@@ -1,4 +1,3 @@
-// path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartCard.tsx
 import React, { useEffect, useMemo, useRef } from "react";
 import ApexCharts, { type ApexOptions } from "apexcharts";
 import styles from "./TradingChartsPanel.module.css";
@@ -6,6 +5,8 @@ import { useCandles, type SymbolConfig } from "./trandingCharts.logic";
 
 type Props = {
   config: SymbolConfig;
+  isFocused: boolean;
+  onFocus: () => void;
 };
 
 const C_UP = "#00ff66";
@@ -151,7 +152,7 @@ function getUsMarketHolidaysUtc(year: number): MarketHoliday[] {
   return holidays;
 }
 
-export default function TradingChartCard({ config }: Props) {
+export default function TradingChartCard({ config, isFocused, onFocus }: Props) {
   const { symbol, label, timeframeCode } = config;
 
   const { candles, loading, error } = useCandles(symbol, timeframeCode, 300);
@@ -316,7 +317,24 @@ export default function TradingChartCard({ config }: Props) {
         type: "candlestick",
         height: "100%",
         background: "transparent",
-        toolbar: { show: false },
+        toolbar: {
+          show: true,
+          tools: {
+            download: true,
+            selection: true,
+            zoom: true,
+            zoomin: true,
+            zoomout: true,
+            pan: true,
+            reset: true,
+          },
+          autoSelected: "zoom",
+        },
+        zoom: {
+          enabled: true,
+          type: "x",
+          autoScaleYaxis: true,
+        },
         animations: { enabled: false },
         foreColor: LABEL,
       },
@@ -471,8 +489,17 @@ export default function TradingChartCard({ config }: Props) {
     };
   }, []);
 
+  const handleCardClick = () => {
+    onFocus();
+  };
+
   return (
-    <div className={styles.chartCard}>
+    <div
+      className={`${styles.chartCard} ${
+        isFocused ? styles.chartCardFocused : ""
+      }`}
+      onClick={handleCardClick}
+    >
       <div className={styles.chartHead}>
         <div>
           <div className={styles.chartTitle}>{label}</div>

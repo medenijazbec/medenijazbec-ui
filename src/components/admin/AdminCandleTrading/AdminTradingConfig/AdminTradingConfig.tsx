@@ -1,10 +1,12 @@
 // path: src/components/admin/AdminTradingConfig/AdminTradingConfig.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import styles from "./AdminTradingConfig.module.css";
 import {
   useTradingSettingsAdmin,
   useApiProvidersAdmin,
   useApiKeysAdmin,
+  fetchApiKeyIpHistory,
+  type ApiKeyIpHistoryRow,
 } from "./adminTradingConfig.logic";
 
 const AdminTradingConfig: React.FC = () => {
@@ -44,6 +46,47 @@ const AdminTradingConfig: React.FC = () => {
     create: createKey,
     reload: reloadKeys,
   } = useApiKeysAdmin();
+
+  // API key ↔ IP history (debug)
+  const [ipHistory, setIpHistory] = useState<ApiKeyIpHistoryRow[]>([]);
+  const [ipHistoryLoading, setIpHistoryLoading] = useState<boolean>(true);
+  const [ipHistoryError, setIpHistoryError] = useState<string | null>(null);
+
+  const reloadIpHistory = async () => {
+    try {
+      setIpHistoryLoading(true);
+      setIpHistoryError(null);
+
+      const rows = await fetchApiKeyIpHistory();
+      setIpHistory(rows ?? []);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.detail ||
+        e?.response?.data ||
+        e?.message ||
+        "Failed to load API key IP history.";
+      setIpHistory([]);
+      setIpHistoryError(msg);
+    } finally {
+      setIpHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // initial load of IP history
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    reloadIpHistory();
+  }, []);
+
+  const ipHistoryKeyCount = useMemo(
+    () => new Set(ipHistory.map((h) => h.apiKeyId)).size,
+    [ipHistory]
+  );
+
+  const ipHistoryIpCount = useMemo(
+    () => new Set(ipHistory.map((h) => h.ipAddress)).size,
+    [ipHistory]
+  );
 
   const providerOptions = useMemo(
     () =>
@@ -585,6 +628,102 @@ const AdminTradingConfig: React.FC = () => {
               {keysSaving ? "Saving…" : "Add API key"}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* API key ↔ IP history (debug) */}
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <h3 className={styles.h3}>API key ↔ IP history</h3>
+          <div className={styles.badgeRow}>
+            <span className={styles.badgeSoft}>
+              Keys: {ipHistoryKeyCount || 0}
+            </span>
+            <span className={styles.badgeSoft}>
+              IPs: {ipHistoryIpCount || 0}
+            </span>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSm}`}
+              onClick={reloadIpHistory}
+              disabled={ipHistoryLoading}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+
+        <p className={styles.meta}>
+          Snapshot from the SQL view that tracks which IPs have been used by
+          which API keys. Each row is a (key, IP) pair with first/last time
+          seen and the IP cooldown timestamp. Use this to debug the Tor pool
+          and confirm that one IP is not shared across multiple keys.
+        </p>
+
+        {ipHistoryError && (
+          <div className={styles.errorBox}>{ipHistoryError}</div>
+        )}
+
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Provider</th>
+                <th>Label</th>
+                <th>IP</th>
+                <th>First seen</th>
+                <th>Last seen</th>
+                <th>IP status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ipHistoryLoading && !ipHistory.length && (
+                <tr>
+                  <td colSpan={7} className={styles.small}>
+                    Loading IP history…
+                  </td>
+                </tr>
+              )}
+
+              {!ipHistoryLoading && !ipHistory.length && (
+                <tr>
+                  <td colSpan={7} className={styles.small}>
+                    No IP history yet. It will populate once workers start
+                    calling the providers through the pool.
+                  </td>
+                </tr>
+              )}
+
+              {ipHistory.map((row) => (
+                <tr key={row.historyId}>
+                  <td className={styles.kbd}>#{row.apiKeyId}</td>
+                  <td>{row.providerCode ?? "—"}</td>
+                  <td>{row.keyLabel ?? "—"}</td>
+                  <td className={styles.kbd}>{row.ipAddress ?? "—"}</td>
+                  <td className={styles.kbd}>
+                    {row.firstSeenAt
+                      ? new Date(row.firstSeenAt).toISOString()
+                      : "—"}
+                  </td>
+                  <td className={styles.kbd}>
+                    {row.lastSeenAt
+                      ? new Date(row.lastSeenAt).toISOString()
+                      : "—"}
+                  </td>
+                  <td className={styles.small}>
+                    <div>{row.ipBurned ? "burned" : "ok"}</div>
+                    <div>
+                      Next IP use:{" "}
+                      {row.ipNextAvailableAt
+                        ? new Date(row.ipNextAvailableAt).toISOString()
+                        : "—"}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

@@ -1,5 +1,3 @@
-/* path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.module.css */
-
 .section{
   margin-top: 1.25rem;
   width: 100%;
@@ -129,6 +127,12 @@
   padding:.85rem 1rem .9rem;
   display:flex;
   flex-direction:column;
+  cursor:pointer;
+}
+
+.chartCardFocused{
+  border-color:#00ff66;
+  box-shadow:0 0 0 1px rgba(0,255,102,0.7);
 }
 
 .chartHead{

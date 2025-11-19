@@ -1,4 +1,3 @@
-// path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.tsx
 import React, { useMemo, useState } from "react";
 import styles from "./TradingChartsPanel.module.css";
 import TradingChartCard from "./TradingChartCard";
@@ -15,26 +14,38 @@ export default function TradingChartsPanel() {
   // Symbols the user has in their watchlist (local for now)
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(["NVDA"]);
 
-  // Main symbol when in "single" mode
+  // Main symbol when in "single" mode or focused
   const [mainSymbol, setMainSymbol] = useState<string>("NVDA");
 
   const [mode, setMode] = useState<ViewMode>("single");
 
+  const handleFocusChart = (symbol: string) => {
+    setMainSymbol(symbol);
+    setMode("single");
+  };
+
   const toggleSelected = (symbol: string) => {
     setSelectedSymbols((prev) => {
+      let next: string[];
+
       if (prev.includes(symbol)) {
-        const next = prev.filter((s) => s !== symbol);
-        // if we just unselected the main symbol, pick a replacement
-        if (symbol === mainSymbol) {
-          const fallback =
-            next[0] ??
-            available.find((a) => a.symbol === "NVDA")?.symbol ??
-            symbol;
-          setMainSymbol(fallback);
-        }
-        return next;
+        // remove
+        next = prev.filter((s) => s !== symbol);
+      } else {
+        // add
+        next = [...prev, symbol];
       }
-      return [...prev, symbol];
+
+      if (next.length === 1) {
+        // if only one symbol remains, make it main + go to single mode
+        setMainSymbol(next[0]);
+        setMode("single");
+      } else if (next.length > 1) {
+        // selecting multiple symbols automatically switches to "all" view
+        setMode("all");
+      }
+
+      return next;
     });
   };
 
@@ -55,9 +66,11 @@ export default function TradingChartsPanel() {
       return cfg ? [cfg] : [];
     }
 
-    // all charts stacked – one per selected symbol
+    // "All charts" mode: one card per selected symbol.
+    // If selection is empty, fall back to NVDA.
     const list =
       selectedSymbols.length > 0 ? selectedSymbols : ["NVDA"];
+
     return list
       .map((sym) => configsBySymbol.get(sym))
       .filter((x): x is SymbolConfig => !!x);
@@ -130,7 +143,18 @@ export default function TradingChartsPanel() {
           <select
             className={styles.select}
             value={mainSymbol}
-            onChange={(e) => setMainSymbol(e.target.value)}
+            onChange={(e) => {
+              const sym = e.target.value;
+              setMainSymbol(sym);
+              // if user explicitly picks a main symbol, go to single mode
+              setMode("single");
+              // ensure it’s in the watchlist if nothing else is selected
+              setSelectedSymbols((prev) =>
+                prev.length === 0 || !prev.includes(sym)
+                  ? [...new Set([...prev, sym])]
+                  : prev
+              );
+            }}
           >
             {available.map((cfg) => (
               <option key={cfg.symbol} value={cfg.symbol}>
@@ -146,7 +170,12 @@ export default function TradingChartsPanel() {
 
       <div className={styles.chartsColumn}>
         {renderConfigs.map((cfg) => (
-          <TradingChartCard key={cfg.symbol} config={cfg} />
+          <TradingChartCard
+            key={cfg.symbol}
+            config={cfg}
+            isFocused={cfg.symbol === mainSymbol}
+            onFocus={() => handleFocusChart(cfg.symbol)}
+          />
         ))}
       </div>
     </section>
