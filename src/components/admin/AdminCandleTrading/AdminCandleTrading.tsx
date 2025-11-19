@@ -13,6 +13,7 @@ import TradingChartsPanel from "./trandingCharts/TradingChartsPanel";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
+import AdminTradingConfig from "./AdminTradingConfig/AdminTradingConfig";
 
 const HOURS_OPTIONS = [6, 12, 24, 72];
 
@@ -366,7 +367,8 @@ const AdminCandleTrading: React.FC = () => {
               )}
             </div>
           </section>
-
+              <AdminTradingConfig />
+              <section className={styles.divider} />
           {/* Workers overview */}
           <section className={styles.card}>
             <div className={styles.cardHeader}>
@@ -533,6 +535,9 @@ const AdminCandleTrading: React.FC = () => {
 
           {/* NEW: Trading charts (candlesticks) */}
           <TradingChartsPanel />
+
+
+
         </div>
       </main>
     </div>
