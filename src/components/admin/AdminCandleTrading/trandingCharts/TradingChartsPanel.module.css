@@ -118,6 +118,7 @@
 
 /* Individual chart card */
 .chartCard{
+  position:relative; /* for close btn positioning when maximized */
   width:100%;
   min-height:420px;
   border:1px solid #b6ffe0;
@@ -128,11 +129,26 @@
   display:flex;
   flex-direction:column;
   cursor:pointer;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
 }
 
 .chartCardFocused{
   border-color:#00ff66;
   box-shadow:0 0 0 1px rgba(0,255,102,0.7);
+}
+
+/* Maximized (site-level fullscreen) */
+.chartCardMax{
+  position:fixed;
+  z-index: 9999;
+  inset: 12px;
+  margin: 0;
+  width: calc(100vw - 24px);
+  height: calc(100vh - 24px);
+  cursor: default;
+  background: rgba(7,26,20,0.98);
+  border-color:#00ff66;
+  box-shadow: 0 0 0 2px rgba(0,255,102,0.65), 0 10px 30px rgba(0,0,0,0.6);
 }
 
 .chartHead{
@@ -141,6 +157,12 @@
   align-items:flex-start;
   gap:.75rem;
   margin-bottom:.4rem;
+}
+
+.chartHeadRight{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
 }
 
 .chartTitle{
@@ -162,13 +184,42 @@
 }
 
 .pillUp,
-.pillDown{
+.pillDown,
+.pillPrePost{
   padding:.15rem .45rem;
   border-radius:999px;
   border:1px solid #b6ffe0;
 }
 .pillUp{ color:#00ff66; }
 .pillDown{ color:#ff6b6b; }
+.pillPrePost{ color:#a7f3d0; border-color: rgba(16,185,129,0.6); }
+
+.maxBtn{
+  border:1px solid rgba(16,185,129,0.7);
+  background:rgba(7,26,20,0.6);
+  color:#caffe1;
+  padding:.28rem .55rem;
+  border-radius:999px;
+  font-size:.78rem;
+  cursor:pointer;
+}
+
+.closeMaxBtn{
+  position:absolute;
+  top:.4rem;
+  right:.55rem;
+  width: 28px;
+  height: 28px;
+  line-height: 26px;
+  text-align:center;
+  border-radius:999px;
+  border:1px solid rgba(16,185,129,0.75);
+  background: rgba(7,26,20,0.9);
+  color:#caffe1;
+  font-size: 18px;
+  cursor:pointer;
+  z-index: 10000;
+}
 
 .chartBody{
   width:100%;

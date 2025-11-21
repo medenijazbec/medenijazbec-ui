@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ApexCharts, { type ApexOptions } from "apexcharts";
 import styles from "./TradingChartsPanel.module.css";
 import { useCandles, type SymbolConfig } from "./trandingCharts.logic";
@@ -14,142 +14,44 @@ const C_DOWN = "#ff6b6b";
 const GRID = "rgba(16,185,129,0.22)";
 const LABEL = "#aef5d4";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Start of UTC day (00:00) for a given timestamp. */
-function startOfUtcDay(ms: number): number {
-  const d = new Date(ms);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+/** Safe parse of timeframe code into minutes. */
+function timeframeCodeToMinutes(code: string): number | null {
+  const c = (code || "").trim().toLowerCase();
+  if (!c) return null;
+  // 1m, 3m, 5m, 15m, 30m, 45m
+  const m = c.match(/^(\d+)\s*m$/);
+  if (m) return Math.max(1, parseInt(m[1], 10));
+  // 1h, 2h, 4h, 6h, 12h
+  const h = c.match(/^(\d+)\s*h$/);
+  if (h) return Math.max(1, parseInt(h[1], 10) * 60);
+  // 1d, 2d
+  const d = c.match(/^(\d+)\s*d$/);
+  if (d) return Math.max(1, parseInt(d[1], 10) * 1440);
+  return null;
 }
 
-/** Nth weekday of a month (UTC). weekday: 0=Sun..6=Sat, month: 0=Jan..11=Dec. */
-function nthWeekdayOfMonthUtc(
-  year: number,
-  month: number,
-  weekday: number,
-  n: number
-): number {
-  const first = new Date(Date.UTC(year, month, 1));
-  const firstDow = first.getUTCDay();
-  const offset = (weekday - firstDow + 7) % 7;
-  const day = 1 + offset + (n - 1) * 7;
-  return Date.UTC(year, month, day);
+/** Median of numeric array. */
+function median(nums: number[]): number {
+  if (!nums.length) return 0;
+  const a = [...nums].sort((x, y) => x - y);
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
 }
 
-/** Last weekday of a month (UTC). weekday: 0=Sun..6=Sat. */
-function lastWeekdayOfMonthUtc(
-  year: number,
-  month: number,
-  weekday: number
-): number {
-  const last = new Date(Date.UTC(year, month + 1, 0)); // last day
-  const lastDow = last.getUTCDay();
-  const offset = (lastDow - weekday + 7) % 7;
-  const day = last.getUTCDate() - offset;
-  return Date.UTC(year, month, day);
-}
+/** Derive expected candle interval in ms from timeframeCode or from data. */
+function inferIntervalMs(timeframeCode: string, xs: number[]): number {
+  const fromCodeMin = timeframeCodeToMinutes(timeframeCode);
+  if (fromCodeMin) return fromCodeMin * 60_000;
 
-/** Holiday that is observed on Fri/Mon if it falls on weekend. */
-function observedDateUtc(year: number, month: number, day: number): number {
-  const d = new Date(Date.UTC(year, month, day));
-  const dow = d.getUTCDay();
-  if (dow === 6) {
-    // Saturday -> Friday
-    return Date.UTC(year, month, day - 1);
+  // Fallback: median of small diffs (ignore huge gaps)
+  const diffs: number[] = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const d = xs[i + 1] - xs[i];
+    if (d > 0 && d <= 120 * 60_000) diffs.push(d); // <= 2h
   }
-  if (dow === 0) {
-    // Sunday -> Monday
-    return Date.UTC(year, month, day + 1);
-  }
-  return d.getTime();
-}
-
-/** Easter Sunday (UTC) using Meeus/Jones/Butcher algorithm. */
-function easterSundayUtc(year: number): number {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = March, 4 = April
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return Date.UTC(year, month - 1, day);
-}
-
-/** Good Friday (UTC) = 2 days before Easter Sunday. */
-function goodFridayUtc(year: number): number {
-  const easter = easterSundayUtc(year);
-  const d = new Date(easter);
-  d.setUTCDate(d.getUTCDate() - 2);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-}
-
-type MarketHoliday = { dateMs: number; name: string };
-
-/**
- * US equity market holidays (NYSE/Nasdaq-like) for a given year.
- * Returned as UTC midnight timestamps + human label.
- */
-function getUsMarketHolidaysUtc(year: number): MarketHoliday[] {
-  const holidays: MarketHoliday[] = [];
-
-  const pushObserved = (month: number, day: number, name: string) => {
-    holidays.push({ dateMs: observedDateUtc(year, month, day), name });
-  };
-
-  // New Year's Day (observed)
-  pushObserved(0, 1, "New Year’s Day");
-
-  // Martin Luther King Jr. Day — 3rd Monday in Jan
-  holidays.push({
-    dateMs: nthWeekdayOfMonthUtc(year, 0, 1, 3),
-    name: "MLK Jr. Day",
-  });
-
-  // Presidents’ Day (Washington’s Birthday) — 3rd Monday in Feb
-  holidays.push({
-    dateMs: nthWeekdayOfMonthUtc(year, 1, 1, 3),
-    name: "Presidents’ Day",
-  });
-
-  // Good Friday
-  holidays.push({ dateMs: goodFridayUtc(year), name: "Good Friday" });
-
-  // Memorial Day — last Monday in May
-  holidays.push({
-    dateMs: lastWeekdayOfMonthUtc(year, 4, 1),
-    name: "Memorial Day",
-  });
-
-  // Juneteenth (observed)
-  pushObserved(5, 19, "Juneteenth");
-
-  // Independence Day (observed)
-  pushObserved(6, 4, "Independence Day");
-
-  // Labor Day — 1st Monday in Sep
-  holidays.push({
-    dateMs: nthWeekdayOfMonthUtc(year, 8, 1, 1),
-    name: "Labor Day",
-  });
-
-  // Thanksgiving — 4th Thursday in Nov
-  holidays.push({
-    dateMs: nthWeekdayOfMonthUtc(year, 10, 4, 4),
-    name: "Thanksgiving Day",
-  });
-
-  // Christmas Day (observed)
-  pushObserved(11, 25, "Christmas Day");
-
-  return holidays;
+  const m = median(diffs);
+  // Clamp to at least 1 minute
+  return Math.max(60_000, Math.round(m || 60_000));
 }
 
 export default function TradingChartCard({ config, isFocused, onFocus }: Props) {
@@ -160,6 +62,9 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
   const elRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ApexCharts | null>(null);
 
+  // Local maximize state (site-level "fullscreen")
+  const [isMax, setIsMax] = useState(false);
+
   // --- 1) Sort candles by time (ascending) to be 100% sure ---
   const sortedCandles = useMemo(
     () =>
@@ -169,6 +74,12 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
           new Date(b.openTimeUtc).getTime()
       ),
     [candles]
+  );
+
+  // Precompute raw timestamps (ms)
+  const ts = useMemo(
+    () => sortedCandles.map((c) => new Date(c.openTimeUtc).getTime()),
+    [sortedCandles]
   );
 
   // --- 2) Build series from sorted candles ---
@@ -191,7 +102,6 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
   );
 
   // --- 3) Compute a "nice" y-range that ignores crazy outliers ---
-  // We use closes to set the viewport, using 2nd–98th percentiles.
   const yRange = useMemo(() => {
     if (!sortedCandles.length) return null;
 
@@ -215,63 +125,35 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
     };
   }, [sortedCandles]);
 
-  // --- 4) Day separators + closed-market shading (weekends + holidays) ---
+  // --- 4) Day separators (visual only) ---
+  const dayLines = useMemo(() => {
+    if (ts.length === 0) return [] as any[];
 
-  const { dayLines, closedBlocks } = useMemo(() => {
-    if (!sortedCandles.length) {
-      return { dayLines: [] as any[], closedBlocks: [] as any[] };
-    }
+    // put a dotted line at each UTC midnight covered by the range
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const startDay = Date.UTC(
+      new Date(ts[0]).getUTCFullYear(),
+      new Date(ts[0]).getUTCMonth(),
+      new Date(ts[0]).getUTCDate()
+    );
+    const endDay = Date.UTC(
+      new Date(ts[ts.length - 1]).getUTCFullYear(),
+      new Date(ts[ts.length - 1]).getUTCMonth(),
+      new Date(ts[ts.length - 1]).getUTCDate()
+    );
 
-    const firstTs = new Date(sortedCandles[0].openTimeUtc).getTime();
-    const lastTs =
-      new Date(
-        sortedCandles[sortedCandles.length - 1].openTimeUtc
-      ).getTime();
-
-    const startDay = startOfUtcDay(firstTs);
-    const endDay = startOfUtcDay(lastTs);
-
-    const startYear = new Date(startDay).getUTCFullYear();
-    const endYear = new Date(endDay).getUTCFullYear();
-
-    // gather holidays for all years spanned by the chart
-    const holidayMap = new Map<number, string>(); // dayStartMs -> name
-    for (let y = startYear; y <= endYear; y++) {
-      for (const h of getUsMarketHolidaysUtc(y)) {
-        const dayStart = startOfUtcDay(h.dateMs);
-        // If multiple labels collide, keep the first – they should not.
-        if (!holidayMap.has(dayStart)) {
-          holidayMap.set(dayStart, h.name);
-        }
-      }
-    }
-
-    const dayLinesLocal: any[] = [];
-    const closedBlocksLocal: any[] = [];
-
-    // iterate days from startDay to endDay+1 (so we have a boundary after last)
-    for (
-      let dayStart = startDay;
-      dayStart <= endDay + DAY_MS;
-      dayStart += DAY_MS
-    ) {
-      const date = new Date(dayStart);
-      const dow = date.getUTCDay(); // 0=Sun..6=Sat
-      const isWeekend = dow === 0 || dow === 6;
-      const holidayName = holidayMap.get(dayStart) ?? null;
-
-      // vertical dotted line for each day boundary + label
-      const dayLabel = date.toLocaleDateString(undefined, {
+    const lines: any[] = [];
+    for (let t = startDay; t <= endDay + DAY_MS; t += DAY_MS) {
+      const label = new Date(t).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
       });
-
-      dayLinesLocal.push({
-        x: dayStart,
+      lines.push({
+        x: t,
         borderColor: "rgba(148,163,184,0.5)",
         strokeDashArray: 3,
         label: {
-          text: dayLabel,
+          text: label,
           orientation: "horizontal",
           offsetY: -8,
           borderColor: "transparent",
@@ -282,34 +164,54 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
           },
         },
       });
+    }
+    return lines;
+  }, [ts]);
 
-      // closed-market shading for weekends + holidays
-      if (isWeekend || holidayName) {
-        closedBlocksLocal.push({
-          x: dayStart,
-          x2: dayStart + DAY_MS,
-          fillColor: "rgba(148,163,184,0.18)", // grayish block
-          opacity: 0.5,
-          borderColor: "transparent",
-          label: holidayName
-            ? {
-                text: holidayName,
-                orientation: "horizontal",
-                offsetY: 24,
-                borderColor: "rgba(156,163,175,0.5)",
-                style: {
-                  color: "#e5e7eb",
-                  background: "rgba(15,23,42,0.85)",
-                  fontSize: "10px",
-                },
-              }
-            : undefined,
-        });
+  // --- 5) PRE/POST shading from *data gaps* (your requirement)
+  // For each big gap between candles, shade from (last_candle_open + interval)
+  // through (next_candle_open). This exactly marks the market-closed segment.
+  const prePostBlocks = useMemo(() => {
+    if (ts.length < 2) return [] as any[];
+
+    const intervalMs = inferIntervalMs(timeframeCode, ts);
+    // Threshold that counts as a "session break":
+    // at least either 90 minutes or 5x interval, whichever is larger.
+    const GAP_THRESHOLD = Math.max(90 * 60_000, 5 * intervalMs);
+
+    const blocks: any[] = [];
+    for (let i = 0; i < ts.length - 1; i++) {
+      const cur = ts[i];
+      const nxt = ts[i + 1];
+      const gap = nxt - cur;
+
+      if (gap > GAP_THRESHOLD) {
+        const start = cur + intervalMs; // end of the last candle
+        const end = nxt;                // start of the first candle next session
+        if (end > start) {
+          blocks.push({
+            x: start,
+            x2: end,
+            fillColor: "rgba(0,255,102,0.10)",
+            opacity: 0.5,
+            borderColor: "transparent",
+            label: {
+              text: "PRE/POST DATA",
+              orientation: "horizontal",
+              offsetY: 22,
+              borderColor: "rgba(16,185,129,0.45)",
+              style: {
+                color: "#a7f3d0",
+                background: "rgba(7,26,20,0.75)",
+                fontSize: "10px",
+              },
+            },
+          });
+        }
       }
     }
-
-    return { dayLines: dayLinesLocal, closedBlocks: closedBlocksLocal };
-  }, [sortedCandles]);
+    return blocks;
+  }, [ts, timeframeCode]);
 
   const options = useMemo<ApexOptions>(
     () => ({
@@ -403,8 +305,8 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
 
           if (!ohlc) return "";
           const [open, high, low, close] = ohlc.y;
-          const ts = ohlc.x;
-          const timeStr = new Date(ts).toLocaleTimeString(undefined, {
+          const tsVal = ohlc.x;
+          const timeStr = new Date(tsVal).toLocaleTimeString(undefined, {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
@@ -420,8 +322,8 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
             <div>H: ${high.toFixed(4)}</div>
             <div>L: ${low.toFixed(4)}</div>
             <div>C: <span style="color:${color}">${close.toFixed(
-            4
-          )}</span></div>
+              4
+            )}</span></div>
             <div style="margin-top:2px;font-size:11px;opacity:.85;color:${color}">${dirLabel}</div>
           </div>`;
         },
@@ -431,8 +333,8 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
         labels: { colors: LABEL },
       },
       annotations: {
-        // closed-market blocks first, then day lines on top
-        xaxis: [...closedBlocks, ...dayLines],
+        // Paint PRE/POST blocks derived from gaps, then day lines on top
+        xaxis: [...prePostBlocks, ...dayLines],
       },
       series: [
         {
@@ -463,7 +365,7 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
       error,
       yRange,
       dayLines,
-      closedBlocks,
+      prePostBlocks,
     ]
   );
 
@@ -497,7 +399,7 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
     <div
       className={`${styles.chartCard} ${
         isFocused ? styles.chartCardFocused : ""
-      }`}
+      } ${isMax ? styles.chartCardMax : ""}`}
       onClick={handleCardClick}
     >
       <div className={styles.chartHead}>
@@ -507,13 +409,45 @@ export default function TradingChartCard({ config, isFocused, onFocus }: Props) 
             {symbol} · {timeframeCode} · candlesticks
           </div>
         </div>
-        <div className={styles.chartLegendHint}>
-          <span className={styles.pillUp}>Up</span>
-          <span className={styles.pillDown}>Down</span>
+
+        <div className={styles.chartHeadRight}>
+          <div className={styles.chartLegendHint}>
+            <span className={styles.pillUp}>Up</span>
+            <span className={styles.pillDown}>Down</span>
+            <span className={styles.pillPrePost}>PRE/POST shaded</span>
+          </div>
+
+          <button
+            type="button"
+            className={styles.maxBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMax(true);
+            }}
+            aria-label="Maximize chart"
+          >
+            ⤢ Maximize
+          </button>
         </div>
       </div>
+
+      {isMax && (
+        <button
+          type="button"
+          className={styles.closeMaxBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMax(false);
+          }}
+          aria-label="Close maximized chart"
+        >
+          ×
+        </button>
+      )}
+
       <div ref={elRef} className={styles.chartBody} />
-      {/* All "no data" / errors are shown via Apex's noData + shaded weekends/holidays */}
+      {/* PRE/POST shaded blocks are computed from data gaps: 
+          from (last candle open + interval) -> (next candle open). */}
     </div>
   );
 }
