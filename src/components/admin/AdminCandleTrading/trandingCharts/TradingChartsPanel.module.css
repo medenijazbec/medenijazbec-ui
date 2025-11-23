@@ -1,3 +1,5 @@
+/* path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.module.css */
+/* (unchanged styles) */
 .section{
   margin-top: 1.25rem;
   width: 100%;
@@ -163,6 +165,7 @@
   display:flex;
   align-items:center;
   gap:.5rem;
+  flex-wrap:wrap; /* allow the metadata to wrap nicely */
 }
 
 .chartTitle{
@@ -234,7 +237,7 @@
   color:#ff6b6b;
 }
 
-/* Apex tooltip tweaks, same vibe as fitness pages */
+/* Apex tooltip tweaks */
 .chartCard :global(.apexcharts-tooltip){
   background: rgba(0,0,0,.8) !important;
   color:#d1ffe6 !important;
@@ -249,7 +252,21 @@
   color:#b6ffe0 !important;
 }
 
-/* Responsive: stack controls and allow charts to breathe */
+/* Lightweight meta row (provider / last fetched / next fetch) */
+.fetchMeta{
+  font-size:.78rem;
+  color:#aef5d4;
+  white-space:nowrap;
+}
+.dim{
+  opacity:.65;
+}
+.dotSep{
+  margin: 0 .4rem;
+  opacity:.5;
+}
+
+/* Responsive */
 @media (max-width: 1020px){
   .headerRow{
     flex-direction:column;

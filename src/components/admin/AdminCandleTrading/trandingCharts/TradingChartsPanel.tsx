@@ -1,10 +1,8 @@
+// path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.tsx
 import React, { useMemo, useState } from "react";
 import styles from "./TradingChartsPanel.module.css";
 import TradingChartCard from "./TradingChartCard";
-import {
-  DEFAULT_SYMBOLS,
-  type SymbolConfig,
-} from "./trandingCharts.logic";
+import { DEFAULT_SYMBOLS, type SymbolConfig } from "./trandingCharts.logic";
 
 type ViewMode = "single" | "all";
 
@@ -51,9 +49,7 @@ export default function TradingChartsPanel() {
 
   const configsBySymbol = useMemo(
     () =>
-      new Map<string, SymbolConfig>(
-        available.map((cfg) => [cfg.symbol, cfg])
-      ),
+      new Map<string, SymbolConfig>(available.map((cfg) => [cfg.symbol, cfg])),
     [available]
   );
 
@@ -68,8 +64,7 @@ export default function TradingChartsPanel() {
 
     // "All charts" mode: one card per selected symbol.
     // If selection is empty, fall back to NVDA.
-    const list =
-      selectedSymbols.length > 0 ? selectedSymbols : ["NVDA"];
+    const list = selectedSymbols.length > 0 ? selectedSymbols : ["NVDA"];
 
     return list
       .map((sym) => configsBySymbol.get(sym))
@@ -82,9 +77,11 @@ export default function TradingChartsPanel() {
         <div>
           <h2 className={styles.h2}>Trading charts</h2>
           <p className={styles.meta}>
-            Desktop-first candlestick panels in the same phosphor style as
-            the fitness pages. Choose a primary symbol (e.g. NVIDIA) or
-            view all of your selected stocks stacked vertically.
+            Desktop-first candlestick panels. Outside regular hours, the chart
+            lightly shades pre / post-market or fully closed days. Data is
+            served by the new{" "}
+            <code>/api/nvda-trading/candles</code> endpoint and the schedule
+            comes from <code>/api/trading/next-insert</code>.
           </p>
         </div>
         <div className={styles.modeSwitch}>
@@ -124,17 +121,15 @@ export default function TradingChartsPanel() {
                   }`}
                   onClick={() => toggleSelected(cfg.symbol)}
                 >
-                  <span className={styles.symbolCode}>
-                    {cfg.symbol}
-                  </span>
+                  <span className={styles.symbolCode}>{cfg.symbol}</span>
                   <span className={styles.symbolName}>{cfg.label}</span>
                 </button>
               );
             })}
           </div>
           <div className={styles.meta}>
-            These live in local state for now. Later we&apos;ll persist
-            this watchlist per user in the backend.
+            These live in local state for now. Later we&apos;ll persist this
+            watchlist per user in the backend.
           </div>
         </div>
 
