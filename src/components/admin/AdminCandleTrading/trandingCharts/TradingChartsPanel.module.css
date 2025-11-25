@@ -1,4 +1,3 @@
-/* path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.module.css */
 /* (unchanged styles) */
 .section{
   margin-top: 1.25rem;
@@ -228,6 +227,21 @@
   width:100%;
   flex:1 1 auto;
   min-height:340px;
+}
+
+/* NEW: legend below x-axis showing the NY | LJ splitter with RED bar */
+.timeAxisLegend{
+  margin-top:.35rem;
+  font-size:.74rem;
+  color:#aef5d4;
+  display:flex;
+  align-items:center;
+  gap:.35rem;
+  user-select:none;
+}
+.splitter{
+  color:#ff3b3b; /* RED splitter as requested */
+  font-weight:700;
 }
 
 /* Error text is defined but not used now; keeping in case you want it later */

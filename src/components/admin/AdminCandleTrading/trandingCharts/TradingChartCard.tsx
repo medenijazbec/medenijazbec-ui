@@ -66,6 +66,21 @@ function fmtLJU_hm24(ts: number) {
     hour12: false,
   }).format(ts);
 }
+// NY date like "Nov 25, 09:30 ET"
+function fmtNY_mmmdd_hm(ts: number) {
+  const d = new Intl.DateTimeFormat(undefined, {
+    timeZone: TZ_NY,
+    month: "short",
+    day: "numeric",
+  }).format(ts);
+  const hm = new Intl.DateTimeFormat(undefined, {
+    timeZone: TZ_NY,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(ts);
+  return `${d}, ${hm} ET`;
+}
 
 /** Start of UTC day (00:00) for a given timestamp. */
 function startOfUtcDay(ms: number): number {
@@ -192,6 +207,88 @@ function isNewYorkDstForUtcDay(dayStartUtcMs: number): boolean {
   return false;
 }
 
+/**
+ * Convert a candle open time to a real UTC timestamp.
+ *
+ * Backend semantics:
+ * - `open_time` in DB is **New York (Eastern) local time**.
+ * - It is currently being sent to the frontend as a naive string
+ *   like "2025-11-25 10:57:00" (no timezone).
+ *
+ * Frontend must treat that as NY local time and convert to UTC.
+ * If the string already has a timezone (Z or +/-HH:mm) we trust it as UTC-ish.
+ */
+function parseCandleOpenTimeToUtcMs(
+  raw: string | number | Date | null | undefined
+): number {
+  if (raw == null) return NaN;
+
+  // If already a Date or number, assume it is a proper UTC-based timestamp.
+  if (raw instanceof Date) {
+    return raw.getTime();
+  }
+  if (typeof raw === "number") {
+    return raw;
+  }
+
+  const s = String(raw).trim();
+  if (!s) return NaN;
+
+  // If the string clearly includes timezone information (Z or +HH:mm / -HH:mm),
+  // we assume backend already sends correct ISO and just parse it directly.
+  if (/[zZ]|[+\-]\d\d:?\d\d$/.test(s)) {
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : NaN;
+  }
+
+  // Otherwise, interpret as "YYYY-MM-DD HH:mm:ss" in New York local time.
+  const [datePart, timePartRaw] = s.replace("T", " ").split(" ");
+  const [yearStr, monthStr, dayStr] = (datePart || "").split("-");
+  const [hourStr, minuteStr, secondStr] = (timePartRaw || "00:00:00").split(
+    ":"
+  );
+
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr || "0");
+  const second = Number(secondStr || "0");
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : NaN;
+  }
+
+  // Approximate DST using same helper as the market calendar.
+  const dayStartUtc = Date.UTC(year, month - 1, day);
+  const isDst = isNewYorkDstForUtcDay(dayStartUtc);
+  // New York offset from UTC, in HOURS.
+  // DST: UTC-4, Standard: UTC-5.
+  const offsetHours = isDst ? -4 : -5;
+
+  // "Local" NY time treated as if it were UTC.
+  const localAsUtcMs = Date.UTC(
+    year,
+    month - 1,
+    day,
+    hour,
+    minute,
+    second
+  );
+
+  // If local = UTC + offsetHours, then UTC = local - offsetHours.
+  const utcMs = localAsUtcMs - offsetHours * 3600_000;
+  return utcMs;
+}
+
 /** Market calendar helpers */
 const NEAR_OPEN_SLOTS: Array<{ h: number; m: number }> = [
   { h: 9, m: 0 },
@@ -281,20 +378,23 @@ export default function TradingChartCard({
     return () => window.clearInterval(id);
   }, []);
 
-  // --- 1) Sort candles by time (ascending) ---
+  // --- 1) Normalize + sort candles by true UTC time (ascending) ---
   const sortedCandles = useMemo(
     () =>
-      [...candles].sort(
-        (a, b) =>
-          new Date(a.openTimeUtc).getTime() - new Date(b.openTimeUtc).getTime()
-      ),
+      [...candles]
+        .map((c: any) => ({
+          ...c,
+          // Attach real UTC ms based on NY-local open_time semantics.
+          tsUtc: parseCandleOpenTimeToUtcMs(c.openTimeUtc as any),
+        }))
+        .sort((a, b) => a.tsUtc - b.tsUtc),
     [candles]
   );
 
   // Which providers are present in the latest payload (for display only)
   const providersPresent = useMemo(() => {
     const set = new Set<string>();
-    for (const c of sortedCandles) {
+    for (const c of sortedCandles as any[]) {
       const p = (c.provider || "").trim();
       if (p) set.add(p);
     }
@@ -307,8 +407,8 @@ export default function TradingChartCard({
       {
         name: `${symbol} ${timeframeCode}`,
         type: "candlestick" as const,
-        data: sortedCandles.map((c) => ({
-          x: new Date(c.openTimeUtc).getTime(),
+        data: (sortedCandles as any[]).map((c) => ({
+          x: c.tsUtc,
           y: [c.open, c.high, c.low, c.close] as [
             number,
             number,
@@ -320,8 +420,8 @@ export default function TradingChartCard({
       {
         name: "Close",
         type: "line" as const,
-        data: sortedCandles.map((c) => ({
-          x: new Date(c.openTimeUtc).getTime(),
+        data: (sortedCandles as any[]).map((c) => ({
+          x: c.tsUtc,
           y: c.close,
         })),
       },
@@ -331,9 +431,10 @@ export default function TradingChartCard({
 
   // --- 3) Compute y-range that ignores outliers ---
   const yRange = useMemo(() => {
-    if (!sortedCandles.length) return null;
+    const sc = sortedCandles as any[];
+    if (!sc.length) return null;
 
-    const closes = sortedCandles.map((c) => c.close).sort((a, b) => a - b);
+    const closes = sc.map((c) => c.close).sort((a: number, b: number) => a - b);
     const n = closes.length;
     const idxLow = Math.floor(n * 0.02);
     const idxHigh = Math.floor(n * 0.98);
@@ -352,7 +453,8 @@ export default function TradingChartCard({
 
   // --- 4) Day separators + closed-market shading (weekends + holidays) ---
   const { dayLines, closedBlocks, sessionBoundaryLines } = useMemo(() => {
-    if (!sortedCandles.length) {
+    const sc = sortedCandles as any[];
+    if (!sc.length) {
       return {
         dayLines: [] as any[],
         closedBlocks: [] as any[],
@@ -360,10 +462,8 @@ export default function TradingChartCard({
       };
     }
 
-    const firstTs = new Date(sortedCandles[0].openTimeUtc).getTime();
-    const lastTs = new Date(
-      sortedCandles[sortedCandles.length - 1].openTimeUtc
-    ).getTime();
+    const firstTs = sc[0].tsUtc as number;
+    const lastTs = sc[sc.length - 1].tsUtc as number;
 
     const startDay = startOfUtcDay(firstTs);
     const endDay = startOfUtcDay(lastTs);
@@ -416,7 +516,7 @@ export default function TradingChartCard({
         },
       });
 
-      // Closed blocks for weekends & holidays
+      // Entire-day CLOSED blocks for weekends & holidays
       if (isWeekend || holidayName) {
         const labelText = holidayName
           ? `CLOSED • ${holidayName}`
@@ -424,7 +524,7 @@ export default function TradingChartCard({
         closedBlocksLocal.push({
           x: dayStart,
           x2: dayStart + DAY_MS,
-          fillColor: "rgba(0,255,102,0.08)",
+          fillColor: "rgba(0,255,102,0.10)",
           opacity: 0.5,
           borderColor: "transparent",
           label: {
@@ -451,7 +551,7 @@ export default function TradingChartCard({
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
             label: {
-              text: "Market Open (09:30 ET)",
+              text: `Market Open: ${fmtNY_mmmdd_hm(openUtc)}`,
               orientation: "horizontal",
               offsetY: -16,
               borderColor: "transparent",
@@ -467,13 +567,54 @@ export default function TradingChartCard({
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
             label: {
-              text: "Market Close (16:00 ET)",
+              text: `Market Close: ${fmtNY_mmmdd_hm(closeUtc)}`,
               orientation: "horizontal",
               offsetY: -16,
               borderColor: "transparent",
               style: {
                 color: "#16a34a",
                 background: "rgba(7,26,20,0.6)",
+                fontSize: "10px",
+              },
+            },
+          }
+        );
+
+        // Add CLOSED shading for pre-market and post-market segments ONLY
+        // (i.e., when the NYSE is closed on trading days)
+        closedBlocksLocal.push(
+          {
+            x: dayStart,
+            x2: openUtc,
+            fillColor: "rgba(0,255,102,0.10)",
+            opacity: 0.5,
+            borderColor: "transparent",
+            label: {
+              text: "CLOSED • Before Open",
+              orientation: "horizontal",
+              offsetY: 22,
+              borderColor: "rgba(16,185,129,0.45)",
+              style: {
+                color: "#a7f3d0",
+                background: "rgba(7,26,20,0.75)",
+                fontSize: "10px",
+              },
+            },
+          },
+          {
+            x: closeUtc,
+            x2: dayStart + DAY_MS,
+            fillColor: "rgba(0,255,102,0.10)",
+            opacity: 0.5,
+            borderColor: "transparent",
+            label: {
+              text: "CLOSED • After Close",
+              orientation: "horizontal",
+              offsetY: 22,
+              borderColor: "rgba(16,185,129,0.45)",
+              style: {
+                color: "#a7f3d0",
+                background: "rgba(7,26,20,0.75)",
                 fontSize: "10px",
               },
             },
@@ -524,73 +665,15 @@ export default function TradingChartCard({
 
     return {
       dayLines: dayLinesLocal,
-      closedBlocks: closedBlocksLocal,
+      closedBlocks: closedBlocksLocal, // includes weekends/holidays + pre/post closed
       sessionBoundaryLines: sessionLinesLocal,
     };
   }, [sortedCandles]);
 
-  // --- 5) Pre/Post-market shading (outside 09:30–16:00 ET) ---
+  // --- 5) Pre/Post-market shading (legacy) — now disabled by request ---
+  // Kept for historical reasons, but not used in annotations.
   const prePostBlocks = useMemo(() => {
-    if (!sortedCandles.length) return [] as any[];
-
-    const firstTs = new Date(sortedCandles[0].openTimeUtc).getTime();
-    const lastTs = new Date(
-      sortedCandles[sortedCandles.length - 1].openTimeUtc
-    ).getTime();
-
-    const startDay = startOfUtcDay(firstTs);
-    const endDay = startOfUtcDay(lastTs);
-
-    const blocks: any[] = [];
-
-    for (let dayStart = startDay; dayStart <= endDay; dayStart += DAY_MS) {
-      const d = new Date(dayStart);
-      const dow = d.getUTCDay();
-      const isWeekend = dow === 0 || dow === 6;
-      if (isWeekend) continue; // already fully shaded
-
-      const { openUtc, closeUtc } = getSessionBoundsUtc(dayStart);
-
-      blocks.push({
-        x: dayStart,
-        x2: openUtc,
-        fillColor: "rgba(0,255,102,0.10)",
-        opacity: 0.5,
-        borderColor: "transparent",
-        label: {
-          text: "PRE-MARKET",
-          orientation: "horizontal",
-          offsetY: 22,
-          borderColor: "rgba(16,185,129,0.45)",
-          style: {
-            color: "#a7f3d0",
-            background: "rgba(7,26,20,0.75)",
-            fontSize: "10px",
-          },
-        },
-      });
-
-      blocks.push({
-        x: closeUtc,
-        x2: dayStart + DAY_MS,
-        fillColor: "rgba(0,255,102,0.10)",
-        opacity: 0.5,
-        borderColor: "transparent",
-        label: {
-          text: "POST-MARKET",
-          orientation: "horizontal",
-          offsetY: 22,
-          borderColor: "rgba(16,185,129,0.45)",
-          style: {
-            color: "#a7f3d0",
-            background: "rgba(7,26,20,0.75)",
-            fontSize: "10px",
-          },
-        },
-      });
-    }
-
-    return blocks;
+    return [] as any[];
   }, [sortedCandles]);
 
   // ---- Transport-level: when the hook fetched last ----
@@ -738,10 +821,12 @@ export default function TradingChartCard({
         labels: {
           datetimeUTC: true,
           style: { colors: LABEL },
+          // Show both NY and Ljubljana time on the x-axis
           formatter: (value: string | number) => {
             const n = typeof value === "string" ? Number(value) : value;
             if (!Number.isFinite(n)) return "";
-            return fmtNY_hm(Number(n));
+            const ts = Number(n);
+            return `${fmtNY_hm(ts)} | ${fmtLJU_hm24(ts)}`;
           },
         },
         axisBorder: { show: false },
@@ -815,23 +900,45 @@ export default function TradingChartCard({
       },
       annotations: {
         xaxis: [
-          ...closedBlocks,
-          ...prePostBlocks,
+          ...closedBlocks, // only CLOSED periods shaded
+          // ...prePostBlocks, // intentionally NOT included anymore
           ...sessionBoundaryLines,
           ...dayLines,
         ],
       },
     });
     chartRef.current = chart;
-    chart.render().catch(() => {});
+    chart
+      .render()
+      .catch(() => {
+        /* ignore */
+      });
     // prevent native context menu over the chart (for right-click pan)
     const el = elRef.current;
     const onCtx = (e: MouseEvent) => {
       e.preventDefault();
     };
     el.addEventListener("contextmenu", onCtx);
+
+    // Double-click to reset zoom (quick zoom-out)
+    const onDbl = (e: MouseEvent) => {
+      e.stopPropagation();
+      setXRange(null);
+      try {
+        chart.updateOptions(
+          { xaxis: { min: undefined as any, max: undefined as any } },
+          false,
+          false
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+    el.addEventListener("dblclick", onDbl);
+
     return () => {
       el.removeEventListener("contextmenu", onCtx);
+      el.removeEventListener("dblclick", onDbl);
     };
   }, [
     baseOptions,
@@ -861,8 +968,8 @@ export default function TradingChartCard({
         },
         annotations: {
           xaxis: [
-            ...closedBlocks,
-            ...prePostBlocks,
+            ...closedBlocks, // only CLOSED periods shaded
+            // ...prePostBlocks, // intentionally NOT included anymore
             ...sessionBoundaryLines,
             ...dayLines,
           ],
@@ -1010,7 +1117,8 @@ export default function TradingChartCard({
           <div className={styles.chartLegendHint}>
             <span className={styles.pillUp}>Up</span>
             <span className={styles.pillDown}>Down</span>
-            <span className={styles.pillPrePost}>PRE/POST shaded</span>
+            {/* Keep class name but update meaning per new shading rule */}
+            <span className={styles.pillPrePost}>Closed hours shaded</span>
           </div>
 
           <button
@@ -1042,6 +1150,11 @@ export default function TradingChartCard({
       )}
 
       <div ref={elRef} className={styles.chartBody} />
+
+      {/* Time axis legend with RED splitter and LJ indicator */}
+      <div className={styles.timeAxisLegend} aria-hidden="true">
+        NY time <span className={styles.splitter}>|</span> LJ time
+      </div>
     </div>
   );
 }
