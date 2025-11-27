@@ -91,6 +91,28 @@ function fmtNY_mmmdd_hm(ts: number) {
   return `${d}, ${hm} ET`;
 }
 
+// NY date + time with seconds, e.g. "Nov 25, 07:00:00 PM"
+function fmtNY_mmmdd_hms(ts: number) {
+  const d = new Intl.DateTimeFormat(undefined, {
+    timeZone: TZ_NY,
+    month: "short",
+    day: "numeric",
+  }).format(ts);
+  const hms = fmtNY_hms(ts);
+  return `${d}, ${hms}`;
+}
+
+// Ljubljana date + time with seconds, 24h, e.g. "Nov 26, 01:00:00"
+function fmtLJU_mmmdd_hms24(ts: number) {
+  const d = new Intl.DateTimeFormat(undefined, {
+    timeZone: TZ_LJU,
+    month: "short",
+    day: "numeric",
+  }).format(ts);
+  const hms = fmtLJU_hms24(ts);
+  return `${d}, ${hms}`;
+}
+
 /** Start of UTC day (00:00) for a given timestamp. */
 function startOfUtcDay(ms: number): number {
   const d = new Date(ms);
@@ -518,6 +540,8 @@ export default function TradingChartCard({
             number,
             number
           ],
+          // carry the true UTC timestamp for tooltips
+          ts: c.tsUtc as number,
         })),
       },
       {
@@ -526,6 +550,7 @@ export default function TradingChartCard({
         data: (sortedCandles as any[]).map((c) => ({
           x: c.idx as number,
           y: c.close,
+          ts: c.tsUtc as number,
         })),
       },
     ],
@@ -1016,14 +1041,17 @@ export default function TradingChartCard({
           trim: true,
           offsetY: 4,
 
-          // Show both NY and Ljubljana time on the x-axis.
-          // `value` is our category (the true UTC timestamp in ms).
+          // Show both NY and Ljubljana time on the x-axis,
+          // stacked vertically to save space.
           formatter: (value: string | number) => {
             const n =
               typeof value === "string" ? Number(value) : (value as number);
             if (!Number.isFinite(n)) return "";
             const ts = Number(n);
-            return `${fmtNY_hm(ts)} | ${fmtLJU_hm24(ts)}`;
+            const ny = fmtNY_hm(ts);
+            const lju = fmtLJU_hm24(ts);
+            // two lines: NY on top, LJ below
+            return `${ny}<br/>${lju}`;
           },
         },
         axisBorder: { show: false },
@@ -1042,48 +1070,46 @@ export default function TradingChartCard({
         theme: "dark",
         x: { show: false },
         // Keep hover behavior: NY + Ljubljana times, with bullish/bearish label.
+        // Now the timestamp comes from the data point's `ts` field so it
+        // updates correctly as you move across candles.
         custom: (cfg) => {
           const { dataPointIndex, w } = cfg;
-          const ohlc =
-            w?.config?.series?.[0]?.data?.[dataPointIndex] as
-              | { x: number; y: [number, number, number, number] }
-              | undefined;
+          const seriesIndex = cfg.seriesIndex ?? 0;
 
-          if (!ohlc) return "";
+          const point =
+            w?.config?.series?.[seriesIndex]?.data?.[dataPointIndex] ??
+            w?.config?.series?.[0]?.data?.[dataPointIndex];
+
+          if (!point) return "";
+
+          const ohlc = point as {
+            x: number;
+            y: [number, number, number, number];
+            ts?: number;
+          };
 
           const [open, high, low, close] = ohlc.y;
 
-          // In datetime mode `ohlc.x` was the timestamp.
-          // With category/index mode, `ohlc.x` is the index, so we read the
-          // real timestamp from xaxis.categories but keep the *output*
-          // identical (NY + LJ times).
-          let ts = ohlc.x;
-          const xa = (w?.config?.xaxis as any) || {};
-          if (
-            xa?.type === "category" &&
-            Array.isArray(xa.categories) &&
-            xa.categories.length > dataPointIndex
-          ) {
-            const raw = xa.categories[dataPointIndex];
-            const n =
-              typeof raw === "number"
-                ? raw
-                : typeof raw === "string"
-                ? Number(raw)
-                : NaN;
-            if (Number.isFinite(n)) ts = n;
-          }
+          // Prefer the real UTC timestamp carried on the point
+          // and fall back to `x` if needed.
+          const ts =
+            typeof ohlc.ts === "number" && Number.isFinite(ohlc.ts)
+              ? ohlc.ts
+              : ohlc.x;
 
-          const ny = fmtNY_hms(ts);
-          const lju = fmtLJU_hms24(ts);
+          const nyWithDate = fmtNY_mmmdd_hms(ts);
+          const ljuWithDate = fmtLJU_mmmdd_hms24(ts);
           const isUp = close >= open;
           const dirLabel = isUp ? "Bullish" : "Bearish";
           const color = isUp ? C_UP : C_DOWN;
 
           return `<div style="padding:.28rem .55rem">
             <div style="margin-bottom:4px">
-              <div><b>${ny} <span style="opacity:.65">(New York)</span></b></div>
-              <div style="color:${C_DOWN};margin-top:2px"><b>${lju}</b> <span style="opacity:.65;color:#ffd2d2">(Ljubljana)</span></div>
+              <div><b>${nyWithDate} <span style="opacity:.65">(New York)</span></b></div>
+              <div style="color:${C_DOWN};margin-top:2px">
+                <b>${ljuWithDate}</b>
+                <span style="opacity:.65;color:#ffd2d2"> (Ljubljana)</span>
+              </div>
             </div>
             <div>O: ${open.toFixed(4)}</div>
             <div>H: ${high.toFixed(4)}</div>
