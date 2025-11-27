@@ -569,9 +569,9 @@ export default function TradingChartCard({
     return { min: baseMin - pad, max: baseMax + pad };
   }, [viewCandles]);
 
-  // --- 5) Day separators + closed-market shading (weekends + holidays)
-  // Reuse the same calendar logic as before, but map UTC times into
-  // the index-based x-axis so candles remain 1 slot per bar.
+  // --- 5) Day separators + closed-market shading (weekends + holidays + off-session)
+  // Compute in real UTC time, then map into the *index* axis via linear interpolation
+  // so candles stay packed but open/close & closed periods are annotated correctly.
   const { dayLines, closedBlocks, sessionBoundaryLines } = useMemo(() => {
     const scView = viewCandles as any[];
     const scAll = sortedCandles as any[];
@@ -584,39 +584,55 @@ export default function TradingChartCard({
       };
     }
 
-    // Map UTC timestamp to nearest candle index in the full series.
+    const n = scAll.length;
+    const times = scAll.map((c) => c.tsUtc as number);
+    const idxs = scAll.map((c) => (c.idx ?? 0) as number);
+
+    const firstTsData = times[0];
+    const lastTsData = times[n - 1];
+
+    const firstVisibleTs = scView[0].tsUtc as number;
+    const lastVisibleTs = scView[scView.length - 1].tsUtc as number;
+
+    const visibleMinTs = Math.max(firstVisibleTs, firstTsData);
+    const visibleMaxTs = Math.min(lastVisibleTs, lastTsData);
+
+    // Map a real UTC timestamp into the index-based x-axis,
+    // using linear interpolation between neighboring candles.
     const mapTsToIdx = (ts: number): number => {
-      const arr = scAll as any[];
-      const n = arr.length;
-      if (!n) return 0;
+      if (!Number.isFinite(ts)) return idxs[0];
 
-      if (ts <= arr[0].tsUtc) return (arr[0].idx ?? 0) as number;
-      if (ts >= arr[n - 1].tsUtc)
-        return (arr[n - 1].idx ?? n - 1) as number;
+      if (ts <= firstTsData) return idxs[0];
+      if (ts >= lastTsData) return idxs[n - 1];
 
+      // Find lo/hi such that times[lo] <= ts <= times[hi]
       let lo = 0;
       let hi = n - 1;
-      let best = n - 1;
-
-      while (lo <= hi) {
+      while (hi - lo > 1) {
         const mid = (lo + hi) >> 1;
-        const midTs = arr[mid].tsUtc as number;
-        if (midTs >= ts) {
-          best = mid;
-          hi = mid - 1;
+        if (ts < times[mid]) {
+          hi = mid;
         } else {
-          lo = mid + 1;
+          lo = mid;
         }
       }
 
-      return (arr[best].idx ?? best) as number;
+      const tLo = times[lo];
+      const tHi = times[hi];
+      const iLo = idxs[lo];
+      const iHi = idxs[hi];
+
+      if (tHi === tLo) return iLo;
+      const ratio = (ts - tLo) / (tHi - tLo);
+      return iLo + ratio * (iHi - iLo);
     };
 
-    const firstTs = scView[0].tsUtc as number;
-    const lastTs = scView[scView.length - 1].tsUtc as number;
+    const dayLinesLocal: any[] = [];
+    const closedBlocksLocal: any[] = [];
+    const sessionLinesLocal: any[] = [];
 
-    const startDay = startOfUtcDay(firstTs);
-    const endDay = startOfUtcDay(lastTs);
+    const startDay = startOfUtcDay(visibleMinTs);
+    const endDay = startOfUtcDay(visibleMaxTs);
 
     const startYear = new Date(startDay).getUTCFullYear();
     const endYear = new Date(endDay).getUTCFullYear();
@@ -629,9 +645,39 @@ export default function TradingChartCard({
       }
     }
 
-    const dayLinesLocal: any[] = [];
-    const closedBlocksLocal: any[] = [];
-    const sessionLinesLocal: any[] = [];
+    const pushClosedWindow = (
+      windowStartTs: number,
+      windowEndTs: number,
+      labelText: string
+    ) => {
+      const t1 = Math.max(windowStartTs, visibleMinTs);
+      const t2 = Math.min(windowEndTs, visibleMaxTs);
+      if (t2 <= t1) return;
+
+      const x1 = mapTsToIdx(t1);
+      const x2 = mapTsToIdx(t2);
+
+      if (!Number.isFinite(x1) || !Number.isFinite(x2) || x2 <= x1) return;
+
+      closedBlocksLocal.push({
+        x: x1,
+        x2: x2,
+        fillColor: "rgba(0,255,102,0.10)",
+        opacity: 0.5,
+        borderColor: "transparent",
+        label: {
+          text: labelText,
+          orientation: "horizontal",
+          offsetY: 22,
+          borderColor: "rgba(16,185,129,0.45)",
+          style: {
+            color: "#a7f3d0",
+            background: "rgba(7,26,20,0.75)",
+            fontSize: "10px",
+          },
+        },
+      });
+    };
 
     for (
       let dayStart = startDay;
@@ -648,71 +694,43 @@ export default function TradingChartCard({
         day: "numeric",
       });
 
-      const dayIdx = mapTsToIdx(dayStart);
-
-      // Day boundary line (dotted, with date label)
-      dayLinesLocal.push({
-        x: dayIdx,
-        borderColor: "rgba(148,163,184,0.45)",
-        strokeDashArray: 3,
-        label: {
-          text: dayLabel,
-          orientation: "horizontal",
-          offsetY: -8,
-          borderColor: "transparent",
-          style: {
-            color: "#9ca3af",
-            background: "transparent",
-            fontSize: "10px",
-          },
-        },
-      });
-
-      // Entire-day CLOSED blocks for weekends & holidays.
-      // On an index axis, this is compressed between the nearest trading candles
-      // but we keep the label semantics identical to the original implementation.
-      if (isWeekend || holidayName) {
-        const labelText = holidayName
-          ? `CLOSED • ${holidayName}`
-          : "CLOSED • Weekend";
-
-        const startIdx = mapTsToIdx(dayStart);
-        const endIdx = mapTsToIdx(dayStart + DAY_MS);
-        let x1 = startIdx - 0.5;
-        let x2 = endIdx + 0.5;
-        if (!Number.isFinite(x1)) x1 = startIdx;
-        if (!Number.isFinite(x2)) x2 = endIdx;
-        if (x2 <= x1) x2 = x1 + 1;
-
-        closedBlocksLocal.push({
-          x: x1,
-          x2,
-          fillColor: "rgba(0,255,102,0.10)",
-          opacity: 0.5,
-          borderColor: "transparent",
+      // Day boundary line (dotted, with date label) if it falls into visible range
+      if (dayStart >= visibleMinTs && dayStart <= visibleMaxTs) {
+        const dayIdx = mapTsToIdx(dayStart);
+        dayLinesLocal.push({
+          x: dayIdx,
+          borderColor: "rgba(148,163,184,0.45)",
+          strokeDashArray: 3,
           label: {
-            text: labelText,
+            text: dayLabel,
             orientation: "horizontal",
-            offsetY: 22,
-            borderColor: "rgba(16,185,129,0.45)",
+            offsetY: -8,
+            borderColor: "transparent",
             style: {
-              color: "#a7f3d0",
-              background: "rgba(7,26,20,0.75)",
+              color: "#9ca3af",
+              background: "transparent",
               fontSize: "10px",
             },
           },
         });
       }
 
-      // Vertical lines for open/close of regular session (Mon-Fri)
+      // FULL-DAY MARKET CLOSED (weekends + US holidays)
+      if (isWeekend || holidayName) {
+        const labelText = holidayName
+          ? `MARKET CLOSED • ${holidayName}`
+          : "MARKET CLOSED • Weekend";
+        pushClosedWindow(dayStart, dayStart + DAY_MS, labelText);
+      }
+
+      // Regular session open/close (Mon–Fri on non-holidays)
       if (!isWeekend && !holidayName) {
         const { openUtc, closeUtc } = getSessionBoundsUtc(dayStart);
 
-        const openIdx = mapTsToIdx(openUtc);
-        const closeIdx = mapTsToIdx(closeUtc);
-
-        sessionLinesLocal.push(
-          {
+        // Vertical lines for market OPEN and CLOSE (only if they fall into visible range)
+        if (openUtc >= visibleMinTs && openUtc <= visibleMaxTs) {
+          const openIdx = mapTsToIdx(openUtc);
+          sessionLinesLocal.push({
             x: openIdx,
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
@@ -727,8 +745,12 @@ export default function TradingChartCard({
                 fontSize: "10px",
               },
             },
-          },
-          {
+          });
+        }
+
+        if (closeUtc >= visibleMinTs && closeUtc <= visibleMaxTs) {
+          const closeIdx = mapTsToIdx(closeUtc);
+          sessionLinesLocal.push({
             x: closeIdx,
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
@@ -743,58 +765,18 @@ export default function TradingChartCard({
                 fontSize: "10px",
               },
             },
-          }
-        );
+          });
+        }
 
-        // CLOSED shading for pre-market and post-market segments on trading days.
-        // With an index-based axis these become compact halo segments near open/close.
-        const preStart = openIdx - 1.0;
-        const preEnd = openIdx - 0.05;
-        const postStart = closeIdx + 0.05;
-        const postEnd = closeIdx + 1.0;
-
-        closedBlocksLocal.push(
-          {
-            x: preStart,
-            x2: preEnd,
-            fillColor: "rgba(0,255,102,0.10)",
-            opacity: 0.5,
-            borderColor: "transparent",
-            label: {
-              text: "CLOSED • Before Open",
-              orientation: "horizontal",
-              offsetY: 22,
-              borderColor: "rgba(16,185,129,0.45)",
-              style: {
-                color: "#a7f3d0",
-                background: "rgba(7,26,20,0.75)",
-                fontSize: "10px",
-              },
-            },
-          },
-          {
-            x: postStart,
-            x2: postEnd,
-            fillColor: "rgba(0,255,102,0.10)",
-            opacity: 0.5,
-            borderColor: "transparent",
-            label: {
-              text: "CLOSED • After Close",
-              orientation: "horizontal",
-              offsetY: 22,
-              borderColor: "rgba(16,185,129,0.45)",
-              style: {
-                color: "#a7f3d0",
-                background: "rgba(7,26,20,0.75)",
-                fontSize: "10px",
-              },
-            },
-          }
-        );
+        // CLOSED shading for the parts of the day when market is NOT open.
+        // We no longer care about "before open" vs "after close" labels,
+        // only whether the market is CLOSED or OPEN.
+        pushClosedWindow(dayStart, openUtc, "MARKET CLOSED");
+        pushClosedWindow(closeUtc, dayStart + DAY_MS, "MARKET CLOSED");
       }
 
-      // Weekend start/end lines (UTC midnight boundaries)
-      if (dow === 6) {
+      // Weekend start/end helper lines (optional visual hint)
+      if (dow === 6 && dayStart >= visibleMinTs && dayStart <= visibleMaxTs) {
         // Saturday 00:00 UTC
         const idx = mapTsToIdx(dayStart);
         sessionLinesLocal.push({
@@ -814,7 +796,7 @@ export default function TradingChartCard({
           },
         });
       }
-      if (dow === 1) {
+      if (dow === 1 && dayStart >= visibleMinTs && dayStart <= visibleMaxTs) {
         // Monday 00:00 UTC
         const idx = mapTsToIdx(dayStart);
         sessionLinesLocal.push({
@@ -1143,7 +1125,7 @@ export default function TradingChartCard({
       },
       annotations: {
         xaxis: [
-          ...closedBlocks, // CLOSED periods (weekends, holidays, pre/post halos)
+          ...closedBlocks, // MARKET CLOSED periods (weekends, holidays, off-session)
           // ...prePostBlocks, // intentionally NOT included separately
           ...sessionBoundaryLines,
           ...dayLines,
@@ -1386,7 +1368,7 @@ export default function TradingChartCard({
             <span className={styles.pillUp}>Up</span>
             <span className={styles.pillDown}>Down</span>
             <span className={styles.pillPrePost}>
-              Closed hours & sessions shaded
+              Market CLOSED periods shaded
             </span>
           </div>
 
