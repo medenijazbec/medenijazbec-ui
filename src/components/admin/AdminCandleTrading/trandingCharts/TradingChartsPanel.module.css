@@ -1,4 +1,3 @@
-/* (unchanged styles) */
 .section{
   margin-top: 1.25rem;
   width: 100%;
@@ -229,7 +228,7 @@
   min-height:340px;
 }
 
-/* NEW: legend below x-axis showing the NY | LJ splitter with RED bar */
+/* legend below x-axis showing the NY | LJ splitter with RED bar */
 .timeAxisLegend{
   margin-top:.35rem;
   font-size:.74rem;
@@ -240,7 +239,7 @@
   user-select:none;
 }
 .splitter{
-  color:#ff3b3b; /* RED splitter as requested */
+  color:#ff3b3b; /* RED splitter */
   font-weight:700;
 }
 

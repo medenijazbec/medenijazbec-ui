@@ -14,7 +14,7 @@ type Props = {
 type NextInsertScheduleDto = {
   symbol: string;
   timeframeCode: string;
-  provider: "twelvedata" | "alpha";
+  provider: "twelvedata" | "alpha" | "yahoo";
   lastInsertUtc?: string | null;
   nextInsertUtc: string;
   secondsUntilNext: number;
@@ -27,6 +27,15 @@ const LABEL = "#aef5d4";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REFRESH_MS = 15_000;
+
+/**
+ * How many candles the *auto* view should try to show at once.
+ * You can still zoom out to see all history, but by default the chart
+ * focuses on the most recent N candles.
+ *
+ * For 1m timeframe we want ~8h = 480 candles visible on initial load.
+ */
+const INITIAL_VIEW_HOURS = 8;
 
 // ---- Timezone helpers ----
 const TZ_NY = "America/New_York";
@@ -208,22 +217,21 @@ function isNewYorkDstForUtcDay(dayStartUtcMs: number): boolean {
 }
 
 /**
- * Convert a candle open time to a real UTC timestamp.
+ * Convert a candle open time to a real UTC timestamp (ms).
  *
  * Backend semantics:
- * - `open_time` in DB is **New York (Eastern) local time**.
- * - It is currently being sent to the frontend as a naive string
- *   like "2025-11-25 10:57:00" (no timezone).
+ * - Historically, `openTimeUtc` was actually **New York local time** stored as
+ *   a naive DateTime. Newer versions may send a proper ISO-8601 UTC string.
  *
- * Frontend must treat that as NY local time and convert to UTC.
- * If the string already has a timezone (Z or +/-HH:mm) we trust it as UTC-ish.
+ * Rules:
+ * - If a timezone offset or "Z" is present → trust it and parse directly.
+ * - Otherwise, interpret the string as New York local time and convert to UTC.
  */
 function parseCandleOpenTimeToUtcMs(
   raw: string | number | Date | null | undefined
 ): number {
   if (raw == null) return NaN;
 
-  // If already a Date or number, assume it is a proper UTC-based timestamp.
   if (raw instanceof Date) {
     return raw.getTime();
   }
@@ -235,7 +243,7 @@ function parseCandleOpenTimeToUtcMs(
   if (!s) return NaN;
 
   // If the string clearly includes timezone information (Z or +HH:mm / -HH:mm),
-  // we assume backend already sends correct ISO and just parse it directly.
+  // assume backend already sends correct ISO and just parse it directly.
   if (/[zZ]|[+\-]\d\d:?\d\d$/.test(s)) {
     const t = Date.parse(s);
     return Number.isFinite(t) ? t : NaN;
@@ -289,6 +297,18 @@ function parseCandleOpenTimeToUtcMs(
   return utcMs;
 }
 
+/** Parse timeframe code like "1m", "5m", "1h" into minutes (fallback 1). */
+function parseTimeframeMinutes(timeframeCode: string): number {
+  const m = timeframeCode.trim().match(/^(\d+)\s*([mhd])$/i);
+  if (!m) return 1;
+  const value = Number(m[1]) || 1;
+  const unit = m[2].toLowerCase();
+  if (unit === "m") return value;
+  if (unit === "h") return value * 60;
+  if (unit === "d") return value * 60 * 24;
+  return 1;
+}
+
 /** Market calendar helpers */
 const NEAR_OPEN_SLOTS: Array<{ h: number; m: number }> = [
   { h: 9, m: 0 },
@@ -314,27 +334,36 @@ export default function TradingChartCard({
 }: Props) {
   const { symbol, label, timeframeCode } = config;
 
+  // How many candles to keep in memory.
+  // We want enough history so zooming out reveals more than the ~8h initial view.
+  const tfMinutesForLimit = parseTimeframeMinutes(timeframeCode);
+  const barsFor8h = Math.max(
+    Math.ceil(
+      (INITIAL_VIEW_HOURS * 60) / Math.max(tfMinutesForLimit || 1, 1)
+    ),
+    1
+  );
+  const limitForHook = Math.max(barsFor8h * 2, 300);
+
   // Poll the chart data every 15s so the chart refreshes; server fetch cadence is separate.
   const { candles, loading, error, lastFetchedAt } = useCandles(
     symbol,
     timeframeCode,
-    300,
+    limitForHook,
     REFRESH_MS
   );
 
   // --- Backend authoritative provider + next insert (created_at anchored)
   const [sched, setSched] = useState<NextInsertScheduleDto | null>(null);
-  const [schedFetchedAtMs, setSchedFetchedAtMs] = useState<number | null>(null);
 
   async function fetchSchedule() {
     try {
-      // This already matches the new controller method: [HttpGet("~/api/trading/next-insert")]
+      // This matches [HttpGet("~/api/trading/next-insert")]
       const q = `/api/trading/next-insert?symbol=${encodeURIComponent(
         symbol
       )}&timeframeCode=${encodeURIComponent(timeframeCode)}`;
       const data = await http.get<NextInsertScheduleDto>(q);
       setSched(data);
-      setSchedFetchedAtMs(Date.now());
     } catch {
       // ignore; keep prior display
     }
@@ -360,11 +389,15 @@ export default function TradingChartCard({
   const [isMax, setIsMax] = useState(false);
 
   // Persist current zoom range to avoid resets on updates.
+  // NOTE: this is now in *index space* (category x-axis) rather than raw timestamps.
   const [xRange, setXRange] = useState<{ min: number; max: number } | null>(
     null
   );
 
-  // Right-click panning state
+  // Auto-follow latest candles unless the user manually zooms/pans.
+  const [isAutoFollow, setIsAutoFollow] = useState(true);
+
+  // Right-click panning state (horizontal)
   const panState = useRef<{
     active: boolean;
     startX: number;
@@ -379,16 +412,78 @@ export default function TradingChartCard({
   }, []);
 
   // --- 1) Normalize + sort candles by true UTC time (ascending) ---
-  const sortedCandles = useMemo(
-    () =>
-      [...candles]
-        .map((c: any) => ({
-          ...c,
-          // Attach real UTC ms based on NY-local open_time semantics.
-          tsUtc: parseCandleOpenTimeToUtcMs(c.openTimeUtc as any),
-        }))
-        .sort((a, b) => a.tsUtc - b.tsUtc),
-    [candles]
+  // Also: drop malformed timestamps and *future* candles so we never plot into the future.
+  // Attach a stable idx so that each candle is exactly one equally spaced slot on the x-axis.
+  const sortedCandles = useMemo(() => {
+    const tfMinutes = parseTimeframeMinutes(timeframeCode);
+    const nowMs = Date.now();
+    // Allow a tiny bit of "look-ahead" for edge delays (e.g., up to ~3 bars).
+    const maxAheadMs = Math.max(2 * 60_000, tfMinutes * 60_000 * 3);
+    const cutoff = nowMs + maxAheadMs;
+
+    const normalized = [...candles]
+      .map((c: any) => ({
+        ...c,
+        // Attach real UTC ms based on NY-local open_time semantics.
+        tsUtc: parseCandleOpenTimeToUtcMs(c.openTimeUtc as any),
+      }))
+      .filter(
+        (c) =>
+          Number.isFinite(c.tsUtc) &&
+          typeof c.tsUtc === "number" &&
+          c.tsUtc <= cutoff
+      )
+      .sort((a, b) => (a.tsUtc as number) - (b.tsUtc as number));
+
+    return normalized.map((c, idx) => ({ ...c, idx }));
+  }, [candles, timeframeCode]);
+
+  // --- 1b) Full domain and default auto-follow window in *index* space ---
+  const fullXDomain = useMemo(() => {
+    const sc = sortedCandles as any[];
+    if (!sc.length) return null;
+    const firstIdx = (sc[0].idx ?? 0) as number;
+    const lastIdx = (sc[sc.length - 1].idx ?? sc.length - 1) as number;
+    return { min: firstIdx, max: lastIdx };
+  }, [sortedCandles]);
+
+  const defaultXRange = useMemo(() => {
+    const sc = sortedCandles as any[];
+    if (!sc.length) return null;
+
+    const tfMinutes = parseTimeframeMinutes(timeframeCode);
+    const desiredBarsRaw = Math.floor(
+      (INITIAL_VIEW_HOURS * 60) / Math.max(tfMinutes || 1, 1)
+    );
+    const desiredBars = Math.max(1, desiredBarsRaw);
+
+    const total = sc.length;
+    const startIndex = total > desiredBars ? total - desiredBars : 0;
+
+    const firstIdx = (sc[startIndex].idx ?? startIndex) as number;
+    const lastIdx = (sc[total - 1].idx ?? total - 1) as number;
+
+    const span = Math.max(1, lastIdx - firstIdx);
+    const pad = Math.max(1, Math.floor(span * 0.02)); // a tiny bit of breathing room
+
+    return {
+      min: Math.max(firstIdx - pad, 0),
+      max: lastIdx + pad,
+    };
+  }, [sortedCandles, timeframeCode]);
+
+  // When auto-follow is on, keep xRange tracking the default window.
+  useEffect(() => {
+    if (!defaultXRange) return;
+    setXRange((prev) =>
+      isAutoFollow ? defaultXRange : prev ?? defaultXRange
+    );
+  }, [defaultXRange, isAutoFollow]);
+
+  // Active X-range the chart is using right now (index-based).
+  const activeXRange = useMemo(
+    () => xRange ?? defaultXRange ?? fullXDomain ?? null,
+    [xRange, defaultXRange, fullXDomain]
   );
 
   // Which providers are present in the latest payload (for display only)
@@ -401,14 +496,22 @@ export default function TradingChartCard({
     return Array.from(set);
   }, [sortedCandles]);
 
-  // --- 2) Build series from sorted candles ---
+  // Categories: one per candle; stores the true UTC timestamp
+  // so labels + tooltips can still show NY / LJ wall-clock time
+  // even though the x-axis is index-based.
+  const xCategories = useMemo(
+    () => (sortedCandles as any[]).map((c) => c.tsUtc as number),
+    [sortedCandles]
+  );
+
+  // --- 2) Build series from ALL sorted candles (so you can zoom out to history) ---
   const seriesData = useMemo(
     () => [
       {
         name: `${symbol} ${timeframeCode}`,
         type: "candlestick" as const,
         data: (sortedCandles as any[]).map((c) => ({
-          x: c.tsUtc,
+          x: c.idx as number,
           y: [c.open, c.high, c.low, c.close] as [
             number,
             number,
@@ -421,7 +524,7 @@ export default function TradingChartCard({
         name: "Close",
         type: "line" as const,
         data: (sortedCandles as any[]).map((c) => ({
-          x: c.tsUtc,
+          x: c.idx as number,
           y: c.close,
         })),
       },
@@ -429,9 +532,24 @@ export default function TradingChartCard({
     [sortedCandles, symbol, timeframeCode]
   );
 
-  // --- 3) Compute y-range that ignores outliers ---
-  const yRange = useMemo(() => {
+  // --- 3) Candles currently visible in the active X-range (index-based) ---
+  const viewCandles = useMemo(() => {
     const sc = sortedCandles as any[];
+    if (!sc.length) return [];
+    if (!activeXRange) return sc;
+    const { min, max } = activeXRange;
+    const minIdx = Math.floor(min);
+    const maxIdx = Math.ceil(max);
+    const filtered = sc.filter((c) => {
+      const idx = (c.idx ?? 0) as number;
+      return idx >= minIdx && idx <= maxIdx;
+    }) as any[];
+    return filtered.length ? filtered : sc;
+  }, [sortedCandles, activeXRange]);
+
+  // --- 4) Compute y-range that ignores outliers, based on *visible* candles ---
+  const yRange = useMemo(() => {
+    const sc = viewCandles as any[];
     if (!sc.length) return null;
 
     const closes = sc.map((c) => c.close).sort((a: number, b: number) => a - b);
@@ -449,12 +567,16 @@ export default function TradingChartCard({
     const pad = span * 0.1;
 
     return { min: baseMin - pad, max: baseMax + pad };
-  }, [sortedCandles]);
+  }, [viewCandles]);
 
-  // --- 4) Day separators + closed-market shading (weekends + holidays) ---
+  // --- 5) Day separators + closed-market shading (weekends + holidays)
+  // Reuse the same calendar logic as before, but map UTC times into
+  // the index-based x-axis so candles remain 1 slot per bar.
   const { dayLines, closedBlocks, sessionBoundaryLines } = useMemo(() => {
-    const sc = sortedCandles as any[];
-    if (!sc.length) {
+    const scView = viewCandles as any[];
+    const scAll = sortedCandles as any[];
+
+    if (!scView.length || !scAll.length) {
       return {
         dayLines: [] as any[],
         closedBlocks: [] as any[],
@@ -462,8 +584,36 @@ export default function TradingChartCard({
       };
     }
 
-    const firstTs = sc[0].tsUtc as number;
-    const lastTs = sc[sc.length - 1].tsUtc as number;
+    // Map UTC timestamp to nearest candle index in the full series.
+    const mapTsToIdx = (ts: number): number => {
+      const arr = scAll as any[];
+      const n = arr.length;
+      if (!n) return 0;
+
+      if (ts <= arr[0].tsUtc) return (arr[0].idx ?? 0) as number;
+      if (ts >= arr[n - 1].tsUtc)
+        return (arr[n - 1].idx ?? n - 1) as number;
+
+      let lo = 0;
+      let hi = n - 1;
+      let best = n - 1;
+
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const midTs = arr[mid].tsUtc as number;
+        if (midTs >= ts) {
+          best = mid;
+          hi = mid - 1;
+        } else {
+          lo = mid + 1;
+        }
+      }
+
+      return (arr[best].idx ?? best) as number;
+    };
+
+    const firstTs = scView[0].tsUtc as number;
+    const lastTs = scView[scView.length - 1].tsUtc as number;
 
     const startDay = startOfUtcDay(firstTs);
     const endDay = startOfUtcDay(lastTs);
@@ -498,9 +648,11 @@ export default function TradingChartCard({
         day: "numeric",
       });
 
+      const dayIdx = mapTsToIdx(dayStart);
+
       // Day boundary line (dotted, with date label)
       dayLinesLocal.push({
-        x: dayStart,
+        x: dayIdx,
         borderColor: "rgba(148,163,184,0.45)",
         strokeDashArray: 3,
         label: {
@@ -516,14 +668,25 @@ export default function TradingChartCard({
         },
       });
 
-      // Entire-day CLOSED blocks for weekends & holidays
+      // Entire-day CLOSED blocks for weekends & holidays.
+      // On an index axis, this is compressed between the nearest trading candles
+      // but we keep the label semantics identical to the original implementation.
       if (isWeekend || holidayName) {
         const labelText = holidayName
           ? `CLOSED • ${holidayName}`
           : "CLOSED • Weekend";
+
+        const startIdx = mapTsToIdx(dayStart);
+        const endIdx = mapTsToIdx(dayStart + DAY_MS);
+        let x1 = startIdx - 0.5;
+        let x2 = endIdx + 0.5;
+        if (!Number.isFinite(x1)) x1 = startIdx;
+        if (!Number.isFinite(x2)) x2 = endIdx;
+        if (x2 <= x1) x2 = x1 + 1;
+
         closedBlocksLocal.push({
-          x: dayStart,
-          x2: dayStart + DAY_MS,
+          x: x1,
+          x2,
           fillColor: "rgba(0,255,102,0.10)",
           opacity: 0.5,
           borderColor: "transparent",
@@ -545,9 +708,12 @@ export default function TradingChartCard({
       if (!isWeekend && !holidayName) {
         const { openUtc, closeUtc } = getSessionBoundsUtc(dayStart);
 
+        const openIdx = mapTsToIdx(openUtc);
+        const closeIdx = mapTsToIdx(closeUtc);
+
         sessionLinesLocal.push(
           {
-            x: openUtc,
+            x: openIdx,
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
             label: {
@@ -563,7 +729,7 @@ export default function TradingChartCard({
             },
           },
           {
-            x: closeUtc,
+            x: closeIdx,
             borderColor: "rgba(16,185,129,0.75)",
             strokeDashArray: 6,
             label: {
@@ -580,12 +746,17 @@ export default function TradingChartCard({
           }
         );
 
-        // Add CLOSED shading for pre-market and post-market segments ONLY
-        // (i.e., when the NYSE is closed on trading days)
+        // CLOSED shading for pre-market and post-market segments on trading days.
+        // With an index-based axis these become compact halo segments near open/close.
+        const preStart = openIdx - 1.0;
+        const preEnd = openIdx - 0.05;
+        const postStart = closeIdx + 0.05;
+        const postEnd = closeIdx + 1.0;
+
         closedBlocksLocal.push(
           {
-            x: dayStart,
-            x2: openUtc,
+            x: preStart,
+            x2: preEnd,
             fillColor: "rgba(0,255,102,0.10)",
             opacity: 0.5,
             borderColor: "transparent",
@@ -602,8 +773,8 @@ export default function TradingChartCard({
             },
           },
           {
-            x: closeUtc,
-            x2: dayStart + DAY_MS,
+            x: postStart,
+            x2: postEnd,
             fillColor: "rgba(0,255,102,0.10)",
             opacity: 0.5,
             borderColor: "transparent",
@@ -625,8 +796,9 @@ export default function TradingChartCard({
       // Weekend start/end lines (UTC midnight boundaries)
       if (dow === 6) {
         // Saturday 00:00 UTC
+        const idx = mapTsToIdx(dayStart);
         sessionLinesLocal.push({
-          x: dayStart,
+          x: idx,
           borderColor: "rgba(148,163,184,0.75)",
           strokeDashArray: 6,
           label: {
@@ -644,8 +816,9 @@ export default function TradingChartCard({
       }
       if (dow === 1) {
         // Monday 00:00 UTC
+        const idx = mapTsToIdx(dayStart);
         sessionLinesLocal.push({
-          x: dayStart,
+          x: idx,
           borderColor: "rgba(148,163,184,0.75)",
           strokeDashArray: 6,
           label: {
@@ -665,13 +838,13 @@ export default function TradingChartCard({
 
     return {
       dayLines: dayLinesLocal,
-      closedBlocks: closedBlocksLocal, // includes weekends/holidays + pre/post closed
+      closedBlocks: closedBlocksLocal,
       sessionBoundaryLines: sessionLinesLocal,
     };
-  }, [sortedCandles]);
+  }, [viewCandles, sortedCandles]);
 
-  // --- 5) Pre/Post-market shading (legacy) — now disabled by request ---
-  // Kept for historical reasons, but not used in annotations.
+  // --- 6) Pre/Post-market shading (legacy separate blocks) — still unused,
+  // kept for future tweaks.
   const prePostBlocks = useMemo(() => {
     return [] as any[];
   }, [sortedCandles]);
@@ -719,15 +892,17 @@ export default function TradingChartCard({
   }, [nextRefreshAtMs, tick]);
 
   // ---- Provider + insert schedule from backend ----
-  const providerActive: "twelvedata" | "alpha" | null = sched?.provider ?? null;
-
   const providerLabel = useMemo(() => {
     if (!sched) return "—";
-    if (sched.provider === "twelvedata") {
-      return "Twelve Data (30s)";
+    switch (sched.provider) {
+      case "twelvedata":
+        return "Twelve Data (30s)";
+      case "yahoo":
+        return "Yahoo Finance (off-hours)";
+      case "alpha":
+      default:
+        return "Alpha Vantage";
     }
-    // Cadence hint by known intervals (from controller)
-    return "Alpha Vantage";
   }, [sched]);
 
   const lastInsertedMs = useMemo(() => {
@@ -790,40 +965,80 @@ export default function TradingChartCard({
           },
           autoSelected: "zoom",
         },
-        zoom: { enabled: true, type: "x", autoScaleYaxis: true },
+        zoom: {
+          enabled: true,
+          type: "x",
+          autoScaleYaxis: false, // we manage Y ourselves based on visible candles
+        },
         animations: { enabled: false },
         foreColor: LABEL,
         events: {
-          beforeZoom: (_chart, { xaxis }) => {
-            setXRange({ min: xaxis.min, max: xaxis.max });
-          },
           zoomed: (_chart, { xaxis }) => {
-            setXRange({ min: xaxis.min, max: xaxis.max });
+            if (
+              typeof xaxis?.min === "number" &&
+              typeof xaxis?.max === "number"
+            ) {
+              setIsAutoFollow(false);
+              setXRange({ min: xaxis.min, max: xaxis.max });
+            } else if (defaultXRange) {
+              // resetZoom clicked
+              setIsAutoFollow(true);
+              setXRange(defaultXRange);
+            }
           },
           selection: (_chart, { xaxis }) => {
-            if (xaxis) setXRange({ min: xaxis.min, max: xaxis.max });
+            if (!xaxis) return;
+            if (
+              typeof xaxis.min === "number" &&
+              typeof xaxis.max === "number"
+            ) {
+              setIsAutoFollow(false);
+              setXRange({ min: xaxis.min, max: xaxis.max });
+            }
           },
         },
       },
       grid: {
         borderColor: GRID,
         strokeDashArray: 4,
-        padding: { left: 8, right: 8, top: 8, bottom: 4 },
+        // extra bottom padding so horizontal labels don't get clipped
+        padding: { left: 8, right: 8, top: 8, bottom: 22 },
       },
       plotOptions: {
+        // Candlestick visual tuning:
         candlestick: {
           colors: { upward: C_UP, downward: C_DOWN },
           wick: { useFillColor: true },
         },
+        // Column width affects candlestick body width.
+        bar: {
+          columnWidth: "70%", // keep candles fat enough even with many bars
+        },
+      },
+      stroke: {
+        width: 1, // thin outline so bodies look like blocks, not blobs
+      },
+      dataLabels: {
+        enabled: false,
       },
       xaxis: {
-        type: "datetime",
+        // IMPORTANT: category axis so each candle is one evenly spaced slot.
+        type: "category",
         labels: {
-          datetimeUTC: true,
           style: { colors: LABEL },
-          // Show both NY and Ljubljana time on the x-axis
+
+          // keep labels horizontal and inside the chart
+          rotate: 0,
+          rotateAlways: false,
+          hideOverlappingLabels: true,
+          trim: true,
+          offsetY: 4,
+
+          // Show both NY and Ljubljana time on the x-axis.
+          // `value` is our category (the true UTC timestamp in ms).
           formatter: (value: string | number) => {
-            const n = typeof value === "string" ? Number(value) : value;
+            const n =
+              typeof value === "string" ? Number(value) : (value as number);
             if (!Number.isFinite(n)) return "";
             const ts = Number(n);
             return `${fmtNY_hm(ts)} | ${fmtLJU_hm24(ts)}`;
@@ -844,6 +1059,7 @@ export default function TradingChartCard({
         shared: false,
         theme: "dark",
         x: { show: false },
+        // Keep hover behavior: NY + Ljubljana times, with bullish/bearish label.
         custom: (cfg) => {
           const { dataPointIndex, w } = cfg;
           const ohlc =
@@ -854,7 +1070,27 @@ export default function TradingChartCard({
           if (!ohlc) return "";
 
           const [open, high, low, close] = ohlc.y;
-          const ts = ohlc.x;
+
+          // In datetime mode `ohlc.x` was the timestamp.
+          // With category/index mode, `ohlc.x` is the index, so we read the
+          // real timestamp from xaxis.categories but keep the *output*
+          // identical (NY + LJ times).
+          let ts = ohlc.x;
+          const xa = (w?.config?.xaxis as any) || {};
+          if (
+            xa?.type === "category" &&
+            Array.isArray(xa.categories) &&
+            xa.categories.length > dataPointIndex
+          ) {
+            const raw = xa.categories[dataPointIndex];
+            const n =
+              typeof raw === "number"
+                ? raw
+                : typeof raw === "string"
+                ? Number(raw)
+                : NaN;
+            if (Number.isFinite(n)) ts = n;
+          }
 
           const ny = fmtNY_hms(ts);
           const lju = fmtLJU_hms24(ts);
@@ -884,15 +1120,22 @@ export default function TradingChartCard({
         verticalAlign: "middle",
       },
     }),
-    [loading, error]
+    [loading, error, defaultXRange]
   );
 
   // ---- Create chart once ----
   useEffect(() => {
     if (!elRef.current || chartRef.current) return;
+
     const chart = new ApexCharts(elRef.current, {
       ...baseOptions,
       series: seriesData,
+      xaxis: {
+        ...(baseOptions.xaxis as any),
+        categories: xCategories,
+        min: activeXRange?.min,
+        max: activeXRange?.max,
+      },
       yaxis: {
         ...(baseOptions.yaxis as any),
         min: yRange?.min,
@@ -900,19 +1143,21 @@ export default function TradingChartCard({
       },
       annotations: {
         xaxis: [
-          ...closedBlocks, // only CLOSED periods shaded
-          // ...prePostBlocks, // intentionally NOT included anymore
+          ...closedBlocks, // CLOSED periods (weekends, holidays, pre/post halos)
+          // ...prePostBlocks, // intentionally NOT included separately
           ...sessionBoundaryLines,
           ...dayLines,
         ],
       },
     });
+
     chartRef.current = chart;
     chart
       .render()
       .catch(() => {
         /* ignore */
       });
+
     // prevent native context menu over the chart (for right-click pan)
     const el = elRef.current;
     const onCtx = (e: MouseEvent) => {
@@ -920,18 +1165,29 @@ export default function TradingChartCard({
     };
     el.addEventListener("contextmenu", onCtx);
 
-    // Double-click to reset zoom (quick zoom-out)
+    // Double-click to reset zoom & re-enable auto-follow
     const onDbl = (e: MouseEvent) => {
       e.stopPropagation();
-      setXRange(null);
-      try {
-        chart.updateOptions(
-          { xaxis: { min: undefined as any, max: undefined as any } },
-          false,
-          false
-        );
-      } catch {
-        /* ignore */
+      setIsAutoFollow(true);
+      const targetRange = defaultXRange ?? fullXDomain ?? null;
+      if (targetRange) {
+        setXRange(targetRange);
+        try {
+          chart.updateOptions(
+            {
+              xaxis: {
+                ...(baseOptions.xaxis as any),
+                categories: xCategories,
+                min: targetRange.min,
+                max: targetRange.max,
+              },
+            },
+            false,
+            false
+          );
+        } catch {
+          /* ignore */
+        }
       }
     };
     el.addEventListener("dblclick", onDbl);
@@ -943,11 +1199,15 @@ export default function TradingChartCard({
   }, [
     baseOptions,
     seriesData,
+    xCategories,
     yRange,
     closedBlocks,
     prePostBlocks,
     dayLines,
     sessionBoundaryLines,
+    activeXRange,
+    defaultXRange,
+    fullXDomain,
   ]);
 
   // ---- Incremental updates: series only (preserve zoom) ----
@@ -956,11 +1216,17 @@ export default function TradingChartCard({
     chartRef.current.updateSeries(seriesData, false);
   }, [seriesData]);
 
-  // ---- Update annotations & y-range without resetting zoom ----
+  // ---- Update annotations, y-range & x-range/domain without resetting zoom ----
   useEffect(() => {
     if (!chartRef.current) return;
     chartRef.current.updateOptions(
       {
+        xaxis: {
+          ...(baseOptions.xaxis as any),
+          categories: xCategories,
+          min: activeXRange?.min,
+          max: activeXRange?.max,
+        },
         yaxis: {
           ...(baseOptions.yaxis as any),
           min: yRange?.min,
@@ -968,8 +1234,8 @@ export default function TradingChartCard({
         },
         annotations: {
           xaxis: [
-            ...closedBlocks, // only CLOSED periods shaded
-            // ...prePostBlocks, // intentionally NOT included anymore
+            ...closedBlocks,
+            // ...prePostBlocks,
             ...sessionBoundaryLines,
             ...dayLines,
           ],
@@ -978,26 +1244,19 @@ export default function TradingChartCard({
       false,
       false
     );
-
-    // Re-apply saved x-range (keeps the user's current position)
-    if (xRange) {
-      chartRef.current.updateOptions(
-        { xaxis: { min: xRange.min, max: xRange.max } },
-        false,
-        false
-      );
-    }
   }, [
     yRange,
     closedBlocks,
     prePostBlocks,
     dayLines,
     sessionBoundaryLines,
+    baseOptions.xaxis,
     baseOptions.yaxis,
-    xRange,
+    activeXRange,
+    xCategories,
   ]);
 
-  // ---- Right-click drag to pan (approximate using container width) ----
+  // ---- Right-click drag to pan horizontally (index-based) ----
   useEffect(() => {
     const root = elRef.current;
     if (!root) return;
@@ -1005,17 +1264,9 @@ export default function TradingChartCard({
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 2) return; // right-click only
       e.preventDefault();
-      // if we don't have a range yet, derive from visible series
-      const current =
-        xRange ||
-        (seriesData[0]?.data.length
-          ? {
-              min: (seriesData[0].data[0] as any).x,
-              max: (seriesData[0].data[seriesData[0].data.length - 1] as any)
-                .x,
-            }
-          : null);
-
+      setIsAutoFollow(false);
+      // if we don't have a range yet, derive from current active range
+      const current = activeXRange ?? fullXDomain;
       panState.current = {
         active: true,
         startX: e.clientX,
@@ -1030,10 +1281,27 @@ export default function TradingChartCard({
       const range =
         panState.current.startRange.max - panState.current.startRange.min;
       const dt = (-dxPx / width) * range; // drag right -> move left
-      const min = panState.current.startRange.min + dt;
-      const max = panState.current.startRange.max + dt;
+      let min = panState.current.startRange.min + dt;
+      let max = panState.current.startRange.max + dt;
+
+      // Clamp to full domain if we have it
+      if (fullXDomain) {
+        const span = max - min;
+        if (min < fullXDomain.min) {
+          min = fullXDomain.min;
+          max = fullXDomain.min + span;
+        } else if (max > fullXDomain.max) {
+          max = fullXDomain.max;
+          min = fullXDomain.max - span;
+        }
+      }
+
       setXRange({ min, max });
-      chartRef.current?.updateOptions({ xaxis: { min, max } }, false, false);
+      chartRef.current?.updateOptions(
+        { xaxis: { min, max } },
+        false,
+        false
+      );
     };
 
     const endPan = () => {
@@ -1049,7 +1317,7 @@ export default function TradingChartCard({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", endPan);
     };
-  }, [seriesData, xRange]);
+  }, [activeXRange, fullXDomain]);
 
   // ---- Destroy on unmount ----
   useEffect(() => {
@@ -1117,8 +1385,9 @@ export default function TradingChartCard({
           <div className={styles.chartLegendHint}>
             <span className={styles.pillUp}>Up</span>
             <span className={styles.pillDown}>Down</span>
-            {/* Keep class name but update meaning per new shading rule */}
-            <span className={styles.pillPrePost}>Closed hours shaded</span>
+            <span className={styles.pillPrePost}>
+              Closed hours & sessions shaded
+            </span>
           </div>
 
           <button
