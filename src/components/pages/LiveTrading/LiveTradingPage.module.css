@@ -368,11 +368,11 @@
 .card,
 .controls,
 .mainCard {
-  border-color: rgba(var(--phosphor-rgb), 0.35);
+  border-color: rgba(var(--phosphor-rgb), 0.05);
   box-shadow:
-    0 0 0 1px rgba(var(--phosphor-rgb), 0.55),
-    0 0 18px 6px rgba(var(--phosphor-rgb), 0.4),
-    0 0 42px 12px rgba(var(--phosphor-rgb), 0.22);
+    0 0 0 1px rgba(var(--phosphor-rgb), 0.05),
+    0 0 18px 6px rgba(var(--phosphor-rgb), 0.04),
+    0 0 42px 12px rgba(var(--phosphor-rgb), 0.02);
 }
 
 .mainCard {

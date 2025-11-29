@@ -138,6 +138,7 @@ export default function LiveTradingPage() {
                =============================== */}
             <div className={`${styles.card} ${styles.mainCard}`}>
              <CouncilPanel/>
+             <p></p>
              <WorkerBotsPanel />
               {/* Adjust props to match your TradingChartCard API */}
               <TradingChartsPanel
