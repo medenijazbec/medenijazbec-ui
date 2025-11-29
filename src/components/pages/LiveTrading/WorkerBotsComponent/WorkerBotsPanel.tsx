@@ -226,17 +226,27 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
 
               return (
                 <tr key={w.id}>
-                  <td>
-                    <div className={styles.small}>
-                      <span className={styles.mono}>{w.name}</span>
-                    </div>
-                    <div className={styles.small}>
-                      Strategy:{" "}
-                      <span className={styles.mono}>
-                        {w.strategyName}
-                      </span>
-                    </div>
-                  </td>
+<td>
+  <div className={styles.small}>
+    <span className={styles.mono}>{w.name}</span>
+  </div>
+  <div className={styles.small}>
+    Strategy:{" "}
+    <span className={styles.mono}>{w.strategyName}</span>
+  </div>
+
+  {w.successRatePct != null &&
+    w.tradesSampleCount != null &&
+    w.tradesSampleCount > 0 && (
+      <div className={styles.small}>
+        Win rate (virtual):{" "}
+        <span className={styles.mono}>
+          {w.successRatePct.toFixed(1)}% ({w.tradesSampleCount} trades)
+        </span>
+      </div>
+    )}
+</td>
+
                   <td>
                     <div className={styles.small}>
                       <span

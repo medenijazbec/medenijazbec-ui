@@ -3,7 +3,7 @@
 .card {
   padding: 0.9rem;
   border-radius: 10px;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid #bfffe1;
   background: rgba(7, 26, 20, 0.9);
   box-shadow:
     0 0 0 1px rgba(0, 255, 102, 0.55),

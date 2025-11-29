@@ -361,6 +361,7 @@
   border: 1px solid rgba(16, 185, 129, 0.25);
   background: rgba(7, 26, 20, 0.85);
   margin-bottom: 1rem;
+  color: #bfffe1;
 }
 
 /* stronger glow for main chart / key modules */
@@ -368,11 +369,12 @@
 .card,
 .controls,
 .mainCard {
-  border-color: rgba(var(--phosphor-rgb), 0.05);
+  border-color: rgba(var(--phosphor-rgb), 0.15);
   box-shadow:
-    0 0 0 1px rgba(var(--phosphor-rgb), 0.05),
-    0 0 18px 6px rgba(var(--phosphor-rgb), 0.04),
-    0 0 42px 12px rgba(var(--phosphor-rgb), 0.02);
+    0 0 0 1px rgba(var(--phosphor-rgb), 0.25),
+    0 0 18px 6px rgba(var(--phosphor-rgb), 0.2),
+    0 0 42px 12px rgba(var(--phosphor-rgb), 0.12);
+    color: #bfffe1;
 }
 
 .mainCard {
