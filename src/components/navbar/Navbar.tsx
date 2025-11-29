@@ -293,6 +293,7 @@ const Navbar: React.FC<Props> = ({ brand = "medenijazbec.pro", onNavigate, overl
               <Link className={`${styles.btn} ${pathname.startsWith("/fitness") ? styles.active : ""}`} to="/fitness">Fitness</Link>
               <Link className={`${styles.btn} ${pathname.startsWith("/projects") ? styles.active : ""}`} to="/projects">Projects</Link>
               <Link className={`${styles.btn} ${aboutActive ? styles.active : ""}`} to="/about">About</Link>
+              <Link className={`${styles.btn} ${pathname.startsWith("/live-trading") ? styles.active : ""}`} to="/live-trading">Live Trading</Link>
 
               {isAdmin && (
                 <>

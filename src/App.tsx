@@ -14,6 +14,7 @@ import AdminFitness from "@/components/admin/AdminFitness/AdminFitness";
 import FitnessPage from "@/components/pages/Fitness/Fitness";
 import AdminMarket from "./components/admin/AdminMarket/AdminMarket";
 import AdminCandleTrading from "./components/admin/AdminCandleTrading/AdminCandleTrading";
+import LiveTradingPage from "@/components/pages/LiveTrading/LiveTradingPage";
 
 function RequireAuth(props: { children: React.ReactNode; role?: string }) {
   const { isAuthed, roles } = useAuth();
@@ -36,7 +37,14 @@ export default function App() {
           <Route path="/vg" element={<VGRegister />} />
           <Route path="/vs" element={<VSLogin />} />
            <Route path="/about" element={<AboutPage />} />  
-
+          <Route
+            path="/live-trading"
+            element={
+              <RequireAuth>
+                <LiveTradingPage />
+              </RequireAuth>
+            }
+          />
           {/* Admin-only */}
           <Route
             path="/admin"

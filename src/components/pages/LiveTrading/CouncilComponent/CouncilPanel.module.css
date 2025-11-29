@@ -1,0 +1,265 @@
+/* frontend/liveTrading/CouncilPanel.module.css */
+
+.card {
+  padding: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(7, 26, 20, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 102, 0.55),
+    0 0 18px 6px rgba(0, 255, 102, 0.4),
+    0 0 42px 12px rgba(0, 255, 102, 0.22);
+  color: #bfffe1;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  opacity: 0.9;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.badgeSoft {
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  opacity: 0.9;
+}
+
+.badgePending {
+  border-color: rgba(234, 179, 8, 0.9);
+  color: #fef3c7;
+  background: rgba(202, 138, 4, 0.4);
+}
+
+.badgeAccepted {
+  border-color: rgba(16, 185, 129, 0.9);
+  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.badgeRejected {
+  border-color: rgba(248, 113, 113, 0.9);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.7);
+}
+
+.badgeExpired {
+  border-color: rgba(148, 163, 184, 0.8);
+  color: #e5e7eb;
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.badgeSideBuy {
+  border-color: rgba(16, 185, 129, 0.9);
+  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.badgeSideSell {
+  border-color: rgba(248, 113, 113, 0.9);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.7);
+}
+
+/* layout rows */
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.86rem;
+}
+
+.labelCol {
+  min-width: 120px;
+  max-width: 140px;
+  font-size: 0.8rem;
+  color: #e5fff4;
+  opacity: 0.9;
+}
+
+.valueCol {
+  flex: 1 1 auto;
+}
+
+.small {
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+}
+
+.priceValue {
+  font-weight: 600;
+  color: #bbf7d0;
+}
+
+.pos {
+  color: #bbf7d0;
+}
+
+.neg {
+  color: #fecaca;
+}
+
+.dim {
+  opacity: 0.7;
+}
+
+/* controls */
+
+.controlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.btn {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  color: #a7f3d0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.2;
+  min-height: 28px;
+}
+
+.btnPrimary {
+  background: rgba(16, 185, 129, 0.2);
+  color: #bbf7d0;
+}
+
+.btnDanger {
+  border-color: rgba(248, 113, 113, 0.9);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.65);
+}
+
+.btnSm {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.5rem;
+  min-height: 24px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* text input area */
+
+.textarea {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5fff4;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
+.inputsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 800px) {
+  .inputsRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.inputLabel {
+  font-size: 0.74rem;
+  opacity: 0.9;
+}
+
+.input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5fff4;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.hint {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+/* message states */
+
+.errorBox {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #ff9a9a;
+  background: rgba(255, 0, 0, 0.08);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.infoBox {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+}
+
+/* empty state */
+
+.empty {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}

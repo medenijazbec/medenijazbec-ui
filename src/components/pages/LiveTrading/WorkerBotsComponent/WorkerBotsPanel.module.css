@@ -1,0 +1,179 @@
+/* frontend/liveTrading/WorkerBotsPanel.module.css */
+
+.card {
+  padding: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(7, 26, 20, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 102, 0.55),
+    0 0 18px 6px rgba(0, 255, 102, 0.4),
+    0 0 42px 12px rgba(0, 255, 102, 0.22);
+  color: #bfffe1;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  opacity: 0.9;
+}
+
+.controlsRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+
+.btn {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  color: #a7f3d0;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.2;
+  min-height: 24px;
+}
+
+.btnSm {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.45rem;
+  min-height: 22px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.badgeSoft {
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  opacity: 0.9;
+}
+
+.modePaper {
+  border-color: rgba(59, 130, 246, 0.9);
+  color: #bfdbfe;
+  background: rgba(30, 64, 175, 0.7);
+}
+
+.modeLive {
+  border-color: rgba(16, 185, 129, 0.9);
+  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.statusActive {
+  background: #22c55e;
+}
+
+.statusInactive {
+  background: #f97373;
+}
+
+/* table */
+
+.tableWrap {
+  margin-top: 0.35rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 5px 6px;
+  border-top: 1px solid rgba(16, 185, 129, 0.18);
+  text-align: left;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.table th {
+  font-weight: 600;
+  color: #66f2b4;
+}
+
+.table tr:first-child th,
+.table tr:first-child td {
+  border-top: none;
+}
+
+/* inputs */
+
+.inputSm {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5fff4;
+  padding: 0.18rem 0.4rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+.small {
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+}
+
+.pos {
+  color: #bbf7d0;
+}
+
+.neg {
+  color: #fecaca;
+}
+
+.errorBox {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #ff9a9a;
+  background: rgba(255, 0, 0, 0.08);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
