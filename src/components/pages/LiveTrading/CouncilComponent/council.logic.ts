@@ -2,41 +2,29 @@
 
 import {
   liveTrading,
-  type CouncilRecommendationDto,
+  type CouncilOfferDto,
   type CouncilDecisionRequest,
+  type CouncilSoldRequest,
+  type RecommendationStatus,
   formatUtc as formatUtcFromController,
 } from "@/controllers/liveTrading";
 
-export type { CouncilRecommendationDto, CouncilDecisionRequest };
+export type { CouncilOfferDto, CouncilDecisionRequest, CouncilSoldRequest, RecommendationStatus };
 
-export type RecommendationStatus =
-  | "PENDING_USER"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "EXPIRED"
-  | string;
-
-/**
- * Re-export formatter so CouncilPanel can use it.
- */
+// Re-export formatter so CouncilPanel can use it.
 export const formatUtc = formatUtcFromController;
 
-/**
- * Fetch latest PENDING_USER recommendation.
- * If ownerUserId is omitted, backend will use the default/admin owner id.
- */
-export async function fetchLatestCouncilRecommendation(
-  ownerUserId?: number | null,
-): Promise<CouncilRecommendationDto | null> {
-  return liveTrading.latestCouncilRecommendation(ownerUserId);
-}
-
-/**
- * Post user decision back to council + strategy_signals.
- */
-export async function postCouncilDecision(
-  recommendationId: number,
-  body: CouncilDecisionRequest,
-): Promise<void> {
-  await liveTrading.councilDecision(recommendationId, body);
-}
+export const councilApi = {
+  fetchActive: (ownerUserId?: number | null) =>
+    liveTrading.councilActiveOffers(ownerUserId),
+  fetchAccepted: (ownerUserId?: number | null) =>
+    liveTrading.councilAcceptedOffers(ownerUserId),
+  fetchHistory: (ownerUserId?: number | null, hours = 24) =>
+    liveTrading.councilHistory(ownerUserId, hours),
+  accept: (id: number, body: CouncilDecisionRequest) =>
+    liveTrading.councilAccept(id, body),
+  reject: (id: number, body: CouncilDecisionRequest) =>
+    liveTrading.councilReject(id, body),
+  sold: (id: number, body: CouncilSoldRequest) =>
+    liveTrading.councilSold(id, body),
+};

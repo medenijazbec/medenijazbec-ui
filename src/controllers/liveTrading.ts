@@ -35,7 +35,51 @@ export type RecommendationStatus =
   | "ACCEPTED"
   | "REJECTED"
   | "EXPIRED"
+  | "READY_TO_SELL"
+  | "SOLD"
   | string;
+
+export interface SellSuggestionDto {
+  recommendationId?: number | null;
+  side: "BUY" | "SELL" | string;
+  suggestedPrice?: number | null;
+  expectedReturnPct?: number | null;
+  expectedProfitValue?: number | null;
+  confidence?: number | null;
+  createdAtUtc?: string | null;
+  note?: string | null;
+  scope?: string | null;
+}
+
+export interface CouncilOfferDto {
+  recommendationId: number;
+  signalId: number;
+  workerId: number;
+  workerName: string;
+  strategyName: string;
+  symbolId: number;
+  symbol: string;
+  symbolName?: string | null;
+  timeframeId: number;
+  timeframeCode: string;
+  timeframeMinutes: number;
+  side: "BUY" | "SELL" | string;
+  suggestedPrice: number;
+  sizeValue: number;
+  stopLoss?: number | null;
+  takeProfit?: number | null;
+  expectedReturnPct?: number | null;
+  expectedProfitValue?: number | null;
+  confidence?: number | null;
+  analysisMinutes?: number | null;
+  createdAtUtc: string;
+  expiresAtUtc: string;
+  signalCreatedAtUtc?: string | null;
+  signalValidUntilUtc?: string | null;
+  recommendationStatus: RecommendationStatus;
+  isExpired: boolean;
+  sellSuggestion?: SellSuggestionDto | null;
+}
 
 export interface CouncilRecommendationDto {
   recommendationId: number;
@@ -74,6 +118,7 @@ export interface CouncilRecommendationDto {
   userCapitalInPositions?: number | null;
 
   recommendationStatus: RecommendationStatus;
+  analysisMinutes?: number | null;
 
   // success % for this worker + method (strategy)
   workerSuccessRatePct?: number | null;
@@ -91,6 +136,12 @@ export interface CouncilDecisionRequest {
   userTotalEquity?: number;
   userCashAvailable?: number;
   userCapitalInPositions?: number;
+}
+
+export interface CouncilSoldRequest {
+  soldPrice?: number;
+  soldAtUtc?: string;
+  decisionNote?: string;
 }
 
 export interface ResetWorkerDailyRequest {
@@ -174,4 +225,45 @@ export const liveTrading = {
       `/api/Council/recommendation/${recommendationId}/decision`,
       body,
     ),
+
+  councilActiveOffers: async (
+    ownerUserId?: number | null,
+  ): Promise<CouncilOfferDto[]> => {
+    const params = new URLSearchParams();
+    if (ownerUserId != null) params.set("ownerUserId", String(ownerUserId));
+    return http.get<CouncilOfferDto[]>(
+      `/api/Council/offers/active${params.toString() ? `?${params}` : ""}`,
+    );
+  },
+
+  councilAcceptedOffers: async (
+    ownerUserId?: number | null,
+  ): Promise<CouncilOfferDto[]> => {
+    const params = new URLSearchParams();
+    if (ownerUserId != null) params.set("ownerUserId", String(ownerUserId));
+    return http.get<CouncilOfferDto[]>(
+      `/api/Council/offers/accepted${params.toString() ? `?${params}` : ""}`,
+    );
+  },
+
+  councilHistory: async (
+    ownerUserId?: number | null,
+    hours: number = 24,
+  ): Promise<CouncilOfferDto[]> => {
+    const params = new URLSearchParams();
+    if (ownerUserId != null) params.set("ownerUserId", String(ownerUserId));
+    if (hours != null) params.set("hours", String(hours));
+    return http.get<CouncilOfferDto[]>(
+      `/api/Council/offers/history${params.toString() ? `?${params}` : ""}`,
+    );
+  },
+
+  councilAccept: (recommendationId: number, body: CouncilDecisionRequest) =>
+    http.post<void>(`/api/Council/offers/${recommendationId}/accept`, body),
+
+  councilReject: (recommendationId: number, body: CouncilDecisionRequest) =>
+    http.post<void>(`/api/Council/offers/${recommendationId}/reject`, body),
+
+  councilSold: (recommendationId: number, body: CouncilSoldRequest) =>
+    http.post<void>(`/api/Council/offers/${recommendationId}/sold`, body),
 };

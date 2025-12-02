@@ -1,13 +1,12 @@
-// src/components/pages/LiveTrading/CouncilComponent/CouncilPanel.tsx
-
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./CouncilPanel.module.css";
 import {
-  type CouncilRecommendationDto,
-  type CouncilDecisionRequest,
-  fetchLatestCouncilRecommendation,
+  councilApi,
   formatUtc,
-  postCouncilDecision,
+  type CouncilOfferDto,
+  type CouncilDecisionRequest,
+  type CouncilSoldRequest,
+  type RecommendationStatus,
 } from "./council.logic";
 
 interface CouncilPanelProps {
@@ -15,43 +14,105 @@ interface CouncilPanelProps {
   autoRefreshMs?: number | null;
 }
 
-type DecisionState = "idle" | "submitting" | "done";
+type Tab = "board" | "history" | "sold";
+type BusyMap = Record<number, boolean>;
+type PriceInputMap = Record<number, string>;
+
+const statusClass = (status: RecommendationStatus) => {
+  switch (status) {
+    case "PENDING_USER":
+      return `${styles.badgeSoft} ${styles.badgePending}`;
+    case "ACCEPTED":
+      return `${styles.badgeSoft} ${styles.badgeAccepted}`;
+    case "REJECTED":
+      return `${styles.badgeSoft} ${styles.badgeRejected}`;
+    case "EXPIRED":
+      return `${styles.badgeSoft} ${styles.badgeExpired}`;
+    case "READY_TO_SELL":
+      return `${styles.badgeSoft} ${styles.badgeReadySell}`;
+    case "SOLD":
+      return `${styles.badgeSoft} ${styles.badgeSold}`;
+    default:
+      return styles.badgeSoft;
+  }
+};
+
+function countdown(expiresAtUtc: string): { label: string; danger: boolean } {
+  const now = Date.now();
+  const target = new Date(expiresAtUtc).getTime();
+  const diff = Math.max(0, target - now);
+  const totalSeconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return {
+    label: `${minutes}:${seconds.toString().padStart(2, "0")} left`,
+    danger: totalSeconds <= 30,
+  };
+}
+
+function formatPct(val?: number | null): string {
+  if (val == null || Number.isNaN(val)) return "n/a";
+  return `${val.toFixed(2)}%`;
+}
+
+function formatMoney(val?: number | null): string {
+  if (val == null || Number.isNaN(val)) return "n/a";
+  return val.toFixed(2);
+}
+
+function formatAnalysis(minutes?: number | null): string {
+  if (minutes == null || Number.isNaN(minutes)) return "n/a";
+  return `${Math.round(minutes)}m`;
+}
+
+function shortTimeAgo(iso: string): string {
+  const now = Date.now();
+  const ts = new Date(iso).getTime();
+  const diff = Math.max(0, now - ts);
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ago`;
+}
 
 export const CouncilPanel: React.FC<CouncilPanelProps> = ({
   ownerUserId = null,
-  autoRefreshMs = 10_000,
+  autoRefreshMs = 5000,
 }) => {
+  const [active, setActive] = useState<CouncilOfferDto[]>([]);
+  const [accepted, setAccepted] = useState<CouncilOfferDto[]>([]);
+  const [history, setHistory] = useState<CouncilOfferDto[]>([]);
+  const [tab, setTab] = useState<Tab>("board");
+  const [statusFilter, setStatusFilter] = useState<RecommendationStatus | "ALL">("ALL");
+
   const [loading, setLoading] = useState(false);
-  const [recommendation, setRecommendation] =
-    useState<CouncilRecommendationDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<BusyMap>({});
+  const [soldInputs, setSoldInputs] = useState<PriceInputMap>({});
+  const [decisionNote, setDecisionNote] = useState<string>("");
 
-  const [note, setNote] = useState("");
-  const [userTotalEquity, setUserTotalEquity] = useState<string>("");
-  const [userCash, setUserCash] = useState<string>("");
-  const [userInPositions, setUserInPositions] = useState<string>("");
-
-  const [decisionState, setDecisionState] =
-    useState<DecisionState>("idle");
+  const ownerParam = ownerUserId ?? undefined;
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const rec = await fetchLatestCouncilRecommendation(
-        ownerUserId ?? undefined,
-      );
-      setRecommendation(rec);
+      const [activeRes, acceptedRes, historyRes] = await Promise.all([
+        councilApi.fetchActive(ownerParam),
+        councilApi.fetchAccepted(ownerParam),
+        councilApi.fetchHistory(ownerParam, 24),
+      ]);
+      setActive(activeRes ?? []);
+      setAccepted(acceptedRes ?? []);
+      setHistory(historyRes ?? []);
     } catch (err) {
       console.error(err);
-      setError(
-        (err as Error).message ??
-          "Failed to load council recommendation.",
-      );
+      setError((err as Error).message ?? "Failed to load council offers.");
     } finally {
       setLoading(false);
     }
-  }, [ownerUserId]);
+  }, [ownerParam]);
 
   useEffect(() => {
     void load();
@@ -65,352 +126,417 @@ export const CouncilPanel: React.FC<CouncilPanelProps> = ({
     return () => window.clearInterval(id);
   }, [autoRefreshMs, load]);
 
-  function statusClass(status: string): string {
-    switch (status) {
-      case "PENDING_USER":
-        return `${styles.badgeSoft} ${styles.badgePending}`;
-      case "ACCEPTED":
-        return `${styles.badgeSoft} ${styles.badgeAccepted}`;
-      case "REJECTED":
-        return `${styles.badgeSoft} ${styles.badgeRejected}`;
-      case "EXPIRED":
-        return `${styles.badgeSoft} ${styles.badgeExpired}`;
-      default:
-        return styles.badgeSoft;
-    }
-  }
+  const markBusy = (id: number, val: boolean) =>
+    setBusy((prev) => ({ ...prev, [id]: val }));
 
-  async function handleDecision(decision: "ACCEPT" | "REJECT") {
-    if (!recommendation) return;
+  async function handleDecision(
+    offer: CouncilOfferDto,
+    decision: "ACCEPT" | "REJECT",
+  ) {
     try {
-      setDecisionState("submitting");
-      setError(null);
-
+      markBusy(offer.recommendationId, true);
       const body: CouncilDecisionRequest = {
         decision,
-        decisionNote: note || undefined,
+        decisionNote: decisionNote || undefined,
       };
-
-      const eq = parseFloat(userTotalEquity);
-      const cash = parseFloat(userCash);
-      const inPos = parseFloat(userInPositions);
-
-      if (!Number.isNaN(eq)) body.userTotalEquity = eq;
-      if (!Number.isNaN(cash)) body.userCashAvailable = cash;
-      if (!Number.isNaN(inPos)) body.userCapitalInPositions = inPos;
-
-      await postCouncilDecision(
-        recommendation.recommendationId,
+      await councilApi[decision === "ACCEPT" ? "accept" : "reject"](
+        offer.recommendationId,
         body,
       );
-      setDecisionState("done");
-
-      // Refetch so UI sees updated status / possibly next signal
-      void load();
+      setDecisionNote("");
+      await load();
     } catch (err) {
       console.error(err);
-      setDecisionState("idle");
-      setError(
-        (err as Error).message ?? "Failed to submit decision.",
-      );
+      setError((err as Error).message ?? "Failed to send decision.");
+    } finally {
+      markBusy(offer.recommendationId, false);
     }
   }
 
-  const rec = recommendation;
+  async function handleSold(offer: CouncilOfferDto) {
+    const raw = soldInputs[offer.recommendationId] ?? "";
+    const price = parseFloat(raw);
+    const body: CouncilSoldRequest = {};
+    if (Number.isFinite(price)) body.soldPrice = price;
+
+    try {
+      markBusy(offer.recommendationId, true);
+      await councilApi.sold(offer.recommendationId, body);
+      await load();
+    } catch (err) {
+      console.error(err);
+      setError((err as Error).message ?? "Failed to mark as sold.");
+    } finally {
+      markBusy(offer.recommendationId, false);
+    }
+  }
+
+  const filteredHistory = useMemo(() => {
+    if (statusFilter === "ALL") return history;
+    return history.filter((h) => h.recommendationStatus === statusFilter);
+  }, [history, statusFilter]);
+
+  const soldHistory = useMemo(
+    () => history.filter((h) => h.recommendationStatus === "SOLD"),
+    [history],
+  );
+
+  const nearExpiryIds = useMemo(() => {
+    const now = Date.now();
+    const soon = 60_000; // 1m
+    return new Set(
+      active
+        .filter((o) => new Date(o.expiresAtUtc).getTime() - now <= soon)
+        .map((o) => o.recommendationId),
+    );
+  }, [active]);
 
   return (
     <section className={styles.card}>
       <header className={styles.cardHeader}>
         <div>
-          <h2 className={styles.title}>Council Recommendation</h2>
+          <h2 className={styles.title}>Council Kitchen Board</h2>
           <p className={styles.subtitle}>
-            Real-time best trade candidate, aggregated from your
-            workers.
+            New tickets appear on the main board. Accepted tickets move to the watched side panel;
+            sold and expired tickets move into history.
           </p>
         </div>
-        <div>
-          <div className={styles.badgeRow}>
-            <span
-              className={statusClass(
-                rec?.recommendationStatus ?? "—",
-              )}
-            >
-              {rec ? rec.recommendationStatus : "No signal"}
-            </span>
-            {rec && (
-              <>
-                <span
-                  className={`${styles.badgeSoft} ${
-                    rec.side === "BUY"
-                      ? styles.badgeSideBuy
-                      : styles.badgeSideSell
-                  }`}
-                >
-                  {rec.side} {rec.symbol}
-                </span>
-                <span className={styles.badgeSoft}>
-                  {rec.strategyName} · worker #{rec.workerId}
-                </span>
-              </>
-            )}
-          </div>
+        <div className={styles.badgeRow}>
+          <button
+            className={`${styles.btn} ${styles.btnSm}`}
+            disabled={loading}
+            onClick={() => void load()}
+          >
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <span className={styles.badgeSoft}>
+            Active: {active.length} | Watching: {accepted.length}
+          </span>
         </div>
       </header>
 
-      {loading && (
-        <p className={styles.small}>
-          Loading council recommendation…
-        </p>
-      )}
+      <div className={styles.tabsRow}>
+        <button
+          className={`${styles.tabBtn} ${tab === "board" ? styles.tabActive : ""}`}
+          onClick={() => setTab("board")}
+        >
+          Main board
+        </button>
+        <button
+          className={`${styles.tabBtn} ${tab === "sold" ? styles.tabActive : ""}`}
+          onClick={() => setTab("sold")}
+        >
+          Sold
+        </button>
+        <button
+          className={`${styles.tabBtn} ${tab === "history" ? styles.tabActive : ""}`}
+          onClick={() => setTab("history")}
+        >
+          History (24h)
+        </button>
+      </div>
 
-      {!loading && !rec && (
-        <p className={styles.empty}>
-          No active council recommendation right now. As soon as your
-          workers emit fresh signals, the council will surface the best
-          candidate here.
-        </p>
-      )}
-
-      {!loading && rec && (
-        <>
-          <div className={styles.row}>
-            <div className={styles.labelCol}>Instrument</div>
-            <div className={styles.valueCol}>
-              <div className={styles.small}>
-                <span className={styles.mono}>{rec.symbol}</span>
-                {rec.symbolName ? ` · ${rec.symbolName}` : ""}
-                {` · ${rec.timeframeCode} (${rec.timeframeMinutes}m)`}
-              </div>
-              <div className={styles.small}>
-                Worker{" "}
-                <span className={styles.mono}>
-                  {rec.workerName} (#{rec.workerId})
-                </span>{" "}
-                using{" "}
-                <span className={styles.mono}>
-                  {rec.strategyName}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.row}>
-            <div className={styles.labelCol}>Entry / Risk</div>
-            <div className={styles.valueCol}>
-              <div className={styles.small}>
-                Side:{" "}
-                <strong
-                  className={
-                    rec.side === "BUY"
-                      ? styles.pos
-                      : rec.side === "SELL"
-                      ? styles.neg
-                      : ""
-                  }
+      {tab === "board" && (
+        <div className={styles.boardGrid}>
+          <div className={styles.column}>
+            <div className={styles.subHeader}>New offers (3m TTL)</div>
+            {active.length === 0 && (
+              <p className={styles.empty}>No fresh offers right now.</p>
+            )}
+            {active.map((offer) => {
+              const cd = countdown(offer.expiresAtUtc);
+              const isBusy = busy[offer.recommendationId];
+              const nearExpiry = nearExpiryIds.has(offer.recommendationId);
+              return (
+                <article
+                  key={offer.recommendationId}
+                  className={`${styles.offerCard} ${nearExpiry ? styles.offerExpiring : ""}`}
                 >
-                  {rec.side}
-                </strong>{" "}
-                at{" "}
-                <span className={styles.priceValue}>
-                  {rec.suggestedPrice.toFixed(4)}
-                </span>
-              </div>
-              <div className={styles.small}>
-                Stop:{" "}
-                {rec.stopLoss != null ? (
-                  <span className={styles.mono}>
-                    {rec.stopLoss.toFixed(4)}
-                  </span>
-                ) : (
-                  <span className={styles.dim}>none</span>
-                )}{" "}
-                · Take-profit:{" "}
-                {rec.takeProfit != null ? (
-                  <span className={styles.mono}>
-                    {rec.takeProfit.toFixed(4)}
-                  </span>
-                ) : (
-                  <span className={styles.dim}>none</span>
-                )}
-              </div>
-              <div className={styles.small}>
-                Notional size ≈{" "}
-                <span className={styles.mono}>
-                  {rec.sizeValue.toFixed(2)}
-                </span>
-              </div>
-            </div>
+                  <div className={styles.offerHeader}>
+                    <div className={styles.badgeRow}>
+                      <span className={statusClass(offer.recommendationStatus)}>
+                        {offer.recommendationStatus}
+                      </span>
+                      <span
+                        className={`${styles.badgeSoft} ${
+                          offer.side === "BUY" ? styles.badgeSideBuy : styles.badgeSideSell
+                        }`}
+                      >
+                        {offer.side} {offer.symbol}
+                      </span>
+                      <span className={styles.badgeSoft}>
+                        {offer.strategyName} | worker #{offer.workerId}
+                      </span>
+                      <span className={styles.badgeSoft}>
+                        {offer.timeframeCode} | {formatAnalysis(offer.analysisMinutes)} prep
+                      </span>
+                    </div>
+                    <div className={styles.badgeRow}>
+                      <span className={styles.badgeSoft}>
+                        Created {shortTimeAgo(offer.createdAtUtc)}
+                      </span>
+                      <span
+                        className={`${styles.badgeSoft} ${
+                          cd.danger ? styles.badgeDanger : ""
+                        }`}
+                      >
+                        {cd.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.offerBody}>
+                    <div className={styles.row}>
+                      <div className={styles.labelCol}>Entry</div>
+                      <div className={styles.valueCol}>
+                        <div className={styles.small}>
+                          Side:{" "}
+                          <strong
+                            className={offer.side === "BUY" ? styles.pos : styles.neg}
+                          >
+                            {offer.side}
+                          </strong>{" "}
+                          @ <span className={styles.priceValue}>{offer.suggestedPrice}</span>
+                        </div>
+                        <div className={styles.small}>
+                          Size: <span className={styles.mono}>{formatMoney(offer.sizeValue)}</span>
+                        </div>
+                        <div className={styles.small}>
+                          SL:{" "}
+                          {offer.stopLoss != null ? (
+                            <span className={styles.mono}>{offer.stopLoss}</span>
+                          ) : (
+                            <span className={styles.dim}>none</span>
+                          )}{" "}
+                          | TP:{" "}
+                          {offer.takeProfit != null ? (
+                            <span className={styles.mono}>{offer.takeProfit}</span>
+                          ) : (
+                            <span className={styles.dim}>none</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={styles.row}>
+                      <div className={styles.labelCol}>Alpha</div>
+                      <div className={styles.valueCol}>
+                        <div className={styles.small}>
+                          Expected return: {formatPct(offer.expectedReturnPct)} | Profit:
+                          {` ${formatMoney(offer.expectedProfitValue)}`}
+                        </div>
+                        <div className={styles.confidenceBar}>
+                          <div
+                            className={styles.confidenceFill}
+                            style={{ width: `${(offer.confidence ?? 0) * 100}%` }}
+                          />
+                          <span className={styles.confidenceLabel}>
+                            {(offer.confidence ?? 0) * 100 > 0
+                              ? `${((offer.confidence ?? 0) * 100).toFixed(1)}%`
+                              : "no confidence provided"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.controlsRow}>
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      disabled={isBusy}
+                      onClick={() => void handleDecision(offer, "ACCEPT")}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className={`${styles.btn} ${styles.btnDanger}`}
+                      disabled={isBusy}
+                      onClick={() => void handleDecision(offer, "REJECT")}
+                    >
+                      Reject
+                    </button>
+                    <textarea
+                      className={styles.textarea}
+                      value={decisionNote}
+                      onChange={(e) => setDecisionNote(e.target.value)}
+                      placeholder="Optional note sent with your decision."
+                    />
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
-          <div className={styles.row}>
-            <div className={styles.labelCol}>Alpha</div>
-            <div className={styles.valueCol}>
-              <div className={styles.small}>
-                Expected return:{" "}
-                {rec.expectedReturnPct != null ? (
-                  <span
-                    className={
-                      rec.expectedReturnPct >= 0
-                        ? styles.pos
-                        : styles.neg
-                    }
-                  >
-                    {rec.expectedReturnPct.toFixed(2)}%
+          <div className={styles.columnWide}>
+            <div className={styles.subHeader}>Active / accepted (watched)</div>
+            {accepted.length === 0 && (
+              <p className={styles.empty}>No accepted offers yet. Accept one to start tracking.</p>
+            )}
+            {accepted.map((offer) => {
+              const isBusy = busy[offer.recommendationId];
+              const sell = offer.sellSuggestion;
+              return (
+                <article
+                  key={offer.recommendationId}
+                  className={`${styles.offerCard} ${sell ? styles.offerSell : ""}`}
+                >
+                  <div className={styles.offerHeader}>
+                    <div className={styles.badgeRow}>
+                      <span className={statusClass(offer.recommendationStatus)}>
+                        {offer.recommendationStatus}
+                      </span>
+                      <span
+                        className={`${styles.badgeSoft} ${
+                          offer.side === "BUY" ? styles.badgeSideBuy : styles.badgeSideSell
+                        }`}
+                      >
+                        {offer.side} {offer.symbol}
+                      </span>
+                      <span className={styles.badgeSoft}>
+                        {offer.strategyName} | worker #{offer.workerId}
+                      </span>
+                      <span className={styles.badgeSoft}>
+                        Size {formatMoney(offer.sizeValue)} | SL {offer.stopLoss ?? "n/a"} | TP{" "}
+                        {offer.takeProfit ?? "n/a"}
+                      </span>
+                      <span className={styles.badgeSoft}>
+                        Analysis {formatAnalysis(offer.analysisMinutes)}
+                      </span>
+                    </div>
+                    <div className={styles.badgeRow}>
+                      <span className={styles.badgeSoft}>
+                        Accepted {shortTimeAgo(offer.createdAtUtc)}
+                      </span>
+                      {sell && (
+                        <span className={`${styles.badgeSoft} ${styles.badgeReadySell}`}>
+                          Sell suggested
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {sell && (
+                    <div className={styles.sellBox}>
+                      <div className={styles.small}>
+                        Exit: {sell.side} @ {sell.suggestedPrice ?? "n/a"} | Exp. return{" "}
+                        {formatPct(sell.expectedReturnPct)}
+                      </div>
+                      <div className={styles.small}>
+                        Confidence {formatPct((sell.confidence ?? 0) * 100)} | Scope{" "}
+                        {sell.scope ?? "n/a"}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={styles.controlsRow}>
+                    <input
+                      className={styles.inputSm}
+                      type="number"
+                      value={soldInputs[offer.recommendationId] ?? ""}
+                      onChange={(e) =>
+                        setSoldInputs((prev) => ({
+                          ...prev,
+                          [offer.recommendationId]: e.target.value,
+                        }))
+                      }
+                      placeholder="Sold price (optional)"
+                    />
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      disabled={isBusy}
+                      onClick={() => void handleSold(offer)}
+                    >
+                      Mark sold
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tab === "sold" && (
+        <div>
+          <div className={styles.subHeader}>Sold tickets (user-confirmed)</div>
+          {soldHistory.length === 0 && <p className={styles.empty}>Nothing sold in the last 24h.</p>}
+          {soldHistory.map((item) => (
+            <article key={item.recommendationId} className={styles.offerCard}>
+              <div className={styles.offerHeader}>
+                <div className={styles.badgeRow}>
+                  <span className={statusClass(item.recommendationStatus)}>
+                    {item.recommendationStatus}
                   </span>
-                ) : (
-                  <span className={styles.dim}>n/a</span>
-                )}{" "}
-                · Expected profit:{" "}
-                {rec.expectedProfitValue != null ? (
-                  <span
-                    className={
-                      rec.expectedProfitValue >= 0
-                        ? styles.pos
-                        : styles.neg
-                    }
-                  >
-                    {rec.expectedProfitValue.toFixed(2)}
+                  <span className={styles.badgeSoft}>
+                    {item.side} {item.symbol} | {item.strategyName}
                   </span>
-                ) : (
-                  <span className={styles.dim}>n/a</span>
-                )}
-              </div>
-              <div className={styles.small}>
-                Confidence:{" "}
-                {rec.confidence != null ? (
-                  <span className={styles.mono}>
-                    {(rec.confidence * 100).toFixed(1)}%
+                  <span className={styles.badgeSoft}>
+                    Analysis {formatAnalysis(item.analysisMinutes)}
                   </span>
-                ) : (
-                  <span className={styles.dim}>not provided</span>
-                )}
+                </div>
+                <div className={styles.badgeRow}>
+                  <span className={styles.badgeSoft}>
+                    Enter @ {item.suggestedPrice} | Size {formatMoney(item.sizeValue)}
+                  </span>
+                  <span className={styles.badgeSoft}>Created {formatUtc(item.createdAtUtc)}</span>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
+          ))}
+        </div>
+      )}
 
-          <div className={styles.row}>
-            <div className={styles.labelCol}>Timing</div>
-            <div className={styles.valueCol}>
-              <div className={styles.small}>
-                Signal created:{" "}
-                <span className={styles.mono}>
-                  {formatUtc(rec.signalCreatedAtUtc)}
-                </span>
-              </div>
-              <div className={styles.small}>
-                Valid until:{" "}
-                <span className={styles.mono}>
-                  {formatUtc(rec.signalValidUntilUtc)}
-                </span>
-              </div>
-              <div className={styles.small}>
-                Latest candle open:{" "}
-                <span className={styles.mono}>
-                  {formatUtc(rec.latestCandleOpenTimeUtc)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.inputsRow}>
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Total equity</label>
-              <input
-                className={styles.input}
-                type="number"
-                value={userTotalEquity}
-                onChange={(e) =>
-                  setUserTotalEquity(e.target.value)
-                }
-                placeholder="e.g. 10 000"
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>
-                Cash available
-              </label>
-              <input
-                className={styles.input}
-                type="number"
-                value={userCash}
-                onChange={(e) => setUserCash(e.target.value)}
-                placeholder="e.g. 3 000"
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>
-                Capital in positions
-              </label>
-              <input
-                className={styles.input}
-                type="number"
-                value={userInPositions}
-                onChange={(e) =>
-                  setUserInPositions(e.target.value)
-                }
-                placeholder="e.g. 7 000"
-              />
-            </div>
-          </div>
-
-          <div className={styles.row}>
-            <div className={styles.labelCol}>Note to workers</div>
-            <div className={styles.valueCol}>
-              <textarea
-                className={styles.textarea}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Optional comment. This will be stored in council_recommendations.decision_note and appended to strategy_signals.decision_note so Python workers can adapt."
-              />
-              <p
-                className={`${styles.small} ${styles.hint}`}
-              >
-                Council forwards your decision + note back to
-                workers; they can update risk and position sizing
-                based on your account state.
-              </p>
-            </div>
-          </div>
-
-          <div className={styles.controlsRow}>
-            <button
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              disabled={
-                decisionState === "submitting" ||
-                rec.recommendationStatus !== "PENDING_USER"
-              }
-              onClick={() => void handleDecision("ACCEPT")}
+      {tab === "history" && (
+        <div>
+          <div className={styles.historyHeader}>
+            <div className={styles.subHeader}>History (24h)</div>
+            <select
+              className={styles.select}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as RecommendationStatus | "ALL")}
             >
-              ✅ Accept trade
-            </button>
-            <button
-              className={`${styles.btn} ${styles.btnDanger}`}
-              disabled={
-                decisionState === "submitting" ||
-                rec.recommendationStatus !== "PENDING_USER"
-              }
-              onClick={() => void handleDecision("REJECT")}
-            >
-              ❌ Reject
-            </button>
-            <button
-              className={`${styles.btn} ${styles.btnSm}`}
-              disabled={loading}
-              onClick={() => void load()}
-            >
-              🔄 Refresh
-            </button>
+              <option value="ALL">All</option>
+              <option value="PENDING_USER">Pending</option>
+              <option value="ACCEPTED">Accepted</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="READY_TO_SELL">Ready to sell</option>
+              <option value="SOLD">Sold</option>
+            </select>
           </div>
-        </>
+          {filteredHistory.length === 0 && (
+            <p className={styles.empty}>No history items in the last 24h.</p>
+          )}
+          <div className={styles.historyList}>
+            {filteredHistory.map((item) => (
+              <div key={item.recommendationId} className={styles.historyRow}>
+                <div className={styles.badgeRow}>
+                  <span className={statusClass(item.recommendationStatus)}>
+                    {item.recommendationStatus}
+                  </span>
+                  <span className={styles.badgeSoft}>
+                    {item.side} {item.symbol} | {item.strategyName}
+                  </span>
+                  <span className={styles.badgeSoft}>{item.timeframeCode}</span>
+                  <span className={styles.badgeSoft}>
+                    Analysis {formatAnalysis(item.analysisMinutes)}
+                  </span>
+                </div>
+                <div className={styles.small}>
+                  Entry {item.suggestedPrice} | Size {formatMoney(item.sizeValue)} | SL{" "}
+                  {item.stopLoss ?? "n/a"} | TP {item.takeProfit ?? "n/a"} | Exp ret{" "}
+                  {formatPct(item.expectedReturnPct)}
+                </div>
+                <div className={styles.small}>
+                  Created {formatUtc(item.createdAtUtc)} | Signal {formatUtc(item.signalCreatedAtUtc)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {error && <div className={styles.errorBox}>{error}</div>}
-      {decisionState === "done" && !error && (
-        <div className={styles.infoBox}>
-          Decision sent to council. Workers will see the updated
-          status on this signal and can adapt allocations accordingly.
-        </div>
-      )}
     </section>
   );
 };
