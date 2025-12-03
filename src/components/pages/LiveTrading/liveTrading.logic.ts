@@ -16,9 +16,9 @@ export function formatLjubljana(
   iso: string | null | undefined,
   opts?: Intl.DateTimeFormatOptions
 ): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "—";
+  if (!Number.isFinite(d.getTime())) return "-";
   return new Intl.DateTimeFormat(undefined, {
     timeZone: LJU_TZ,
     year: "numeric",
@@ -35,9 +35,9 @@ export function formatUtc(
   iso: string | null | undefined,
   opts?: Intl.DateTimeFormatOptions
 ): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "—";
+  if (!Number.isFinite(d.getTime())) return "-";
   return new Intl.DateTimeFormat(undefined, {
     timeZone: "UTC",
     year: "numeric",

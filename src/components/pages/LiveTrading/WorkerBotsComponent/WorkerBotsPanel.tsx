@@ -30,6 +30,7 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
   const [capitalInputs, setCapitalInputs] = useState<Record<number, string>>(
     {},
   );
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   async function load() {
     try {
@@ -91,7 +92,7 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
   }
 
   async function handleToggleActive(worker: WorkerSummaryDto) {
-    // isTradingPaused = true → trading is paused
+    // isTradingPaused = true -> trading is paused
     const tradingActive =
       worker.isTradingPaused === undefined ? true : !worker.isTradingPaused;
 
@@ -165,7 +166,7 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
       worker.latestEquity === 0 ||
       worker.initialCapital == null
     ) {
-      return "—";
+      return "-";
     }
     const pnl = worker.latestEquity - worker.initialCapital;
     return pnl.toFixed(2);
@@ -179,6 +180,10 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
   }
 
   const visibleWorkers = workers.filter((w) => w.isActive);
+
+  function toggleExpanded(workerId: number) {
+    setExpanded((prev) => ({ ...prev, [workerId]: !prev[workerId] }));
+  }
 
   return (
     <section className={styles.card}>
@@ -196,12 +201,12 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
             disabled={loading}
             onClick={() => void load()}
           >
-            🔄 Refresh
+            Refresh
           </button>
         </div>
       </header>
 
-      {loading && <p className={styles.small}>Loading workers…</p>}
+      {loading && <p className={styles.small}>Loading workers...</p>}
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
@@ -210,6 +215,7 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
               <th>Worker</th>
               <th>Mode</th>
               <th>Status</th>
+              <th>Best TF (win%)</th>
               <th>Daily capital</th>
               <th>Latest equity / cash</th>
               <th>PnL vs daily</th>
@@ -223,159 +229,221 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
               const isLive = w.mode === "LIVE";
               const tradingActive =
                 w.isTradingPaused === undefined ? true : !w.isTradingPaused;
+              const bestTf = w.bestTimeframeCode
+                ? `${w.bestTimeframeCode} (${w.bestTimeframeSuccessRatePct?.toFixed(1) ?? "0"}%)`
+                : "-";
 
               return (
-                <tr key={w.id}>
-<td>
-  <div className={styles.small}>
-    <span className={styles.mono}>{w.name}</span>
-  </div>
-  <div className={styles.small}>
-    Strategy:{" "}
-    <span className={styles.mono}>{w.strategyName}</span>
-  </div>
+                <React.Fragment key={w.id}>
+                  <tr>
+                    <td>
+                      <div className={styles.small}>
+                        <span className={styles.mono}>{w.name}</span>
+                      </div>
+                      <div className={styles.small}>
+                        Strategy: <span className={styles.mono}>{w.strategyName}</span>
+                      </div>
+                      {w.runtimeInstanceId && (
+                        <div className={styles.small}>
+                          Instance: <span className={styles.mono}>{w.runtimeInstanceId}</span>
+                        </div>
+                      )}
+                      <div className={styles.small}>
+                        Heartbeat:{" "}
+                        <span className={styles.mono}>
+                          {w.lastHeartbeatAtUtc
+                            ? new Date(w.lastHeartbeatAtUtc).toLocaleTimeString()
+                            : "-"}
+                        </span>
+                      </div>
+                      {w.successRatePct != null &&
+                        w.tradesSampleCount != null &&
+                        w.tradesSampleCount > 0 && (
+                          <div className={styles.small}>
+                            Win rate (virtual):{" "}
+                            <span className={styles.mono}>
+                              {w.successRatePct.toFixed(1)}% ({w.tradesSampleCount} trades)
+                            </span>
+                          </div>
+                        )}
+                      <div className={styles.controlsRow}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          type="button"
+                          onClick={() => toggleExpanded(w.id)}
+                        >
+                          {expanded[w.id] ? "Hide details" : "Details"}
+                        </button>
+                      </div>
+                    </td>
 
-  {w.successRatePct != null &&
-    w.tradesSampleCount != null &&
-    w.tradesSampleCount > 0 && (
-      <div className={styles.small}>
-        Win rate (virtual):{" "}
-        <span className={styles.mono}>
-          {w.successRatePct.toFixed(1)}% ({w.tradesSampleCount} trades)
-        </span>
-      </div>
-    )}
-</td>
+                    <td>
+                      <div className={styles.small}>
+                        <span
+                          className={`${styles.badgeSoft} ${
+                            isLive ? styles.modeLive : styles.modePaper
+                          }`}
+                        >
+                          {w.mode}
+                        </span>
+                      </div>
+                      <div className={styles.controlsRow}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          disabled={busy || isLive}
+                          onClick={() => void handleModeChange(w, "LIVE")}
+                        >
+                          Go LIVE
+                        </button>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          disabled={busy || !isLive}
+                          onClick={() => void handleModeChange(w, "PAPER")}
+                        >
+                          Paper
+                        </button>
+                      </div>
+                    </td>
 
-                  <td>
-                    <div className={styles.small}>
-                      <span
-                        className={`${styles.badgeSoft} ${
-                          isLive ? styles.modeLive : styles.modePaper
-                        }`}
-                      >
-                        {w.mode}
-                      </span>
-                    </div>
-                    <div className={styles.controlsRow}>
-                      <button
-                        className={`${styles.btn} ${styles.btnSm}`}
-                        disabled={busy || isLive}
-                        onClick={() => void handleModeChange(w, "LIVE")}
-                      >
-                        Go LIVE
-                      </button>
-                      <button
-                        className={`${styles.btn} ${styles.btnSm}`}
-                        disabled={busy || !isLive}
-                        onClick={() => void handleModeChange(w, "PAPER")}
-                      >
-                        Paper
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <div className={styles.small}>
-                      <span
-                        className={`${styles.statusDot} ${
-                          tradingActive
-                            ? styles.statusActive
-                            : styles.statusInactive
-                        }`}
+                    <td>
+                      <div className={styles.small}>
+                        <span
+                          className={`${styles.statusDot} ${
+                            tradingActive ? styles.statusActive : styles.statusInactive
+                          }`}
+                        />
+                        {tradingActive ? "Active" : "Paused"}
+                      </div>
+                      <div className={styles.controlsRow}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          disabled={busy}
+                          onClick={() => void handleToggleActive(w)}
+                        >
+                          {tradingActive ? "Pause" : "Unpause"}
+                        </button>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div className={styles.small}>{bestTf}</div>
+                    </td>
+
+                    <td>
+                      <input
+                        className={styles.inputSm}
+                        type="number"
+                        value={capitalVal}
+                        onChange={(e) =>
+                          setCapitalInputs((prev) => ({
+                            ...prev,
+                            [w.id]: e.target.value,
+                          }))
+                        }
+                        placeholder={String(w.initialCapital ?? "")}
                       />
-                      {tradingActive ? "Active" : "Paused"}
-                    </div>
-                    <div className={styles.controlsRow}>
-                      <button
-                        className={`${styles.btn} ${styles.btnSm}`}
-                        disabled={busy}
-                        onClick={() => void handleToggleActive(w)}
-                      >
-                        {tradingActive ? "Pause" : "Unpause"}
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <input
-                      className={styles.inputSm}
-                      type="number"
-                      value={capitalVal}
-                      onChange={(e) =>
-                        setCapitalInputs((prev) => ({
-                          ...prev,
-                          [w.id]: e.target.value,
-                        }))
-                      }
-                      placeholder={String(w.initialCapital ?? "")}
-                    />
-                    <div className={styles.controlsRow}>
-                      <button
-                        className={`${styles.btn} ${styles.btnSm}`}
-                        disabled={busy}
-                        onClick={() => void handleSetCapital(w)}
-                      >
-                        Set
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <div className={styles.small}>
-                      Equity:{" "}
-                      {w.latestEquity != null ? (
-                        <span className={styles.mono}>
-                          {w.latestEquity.toFixed(2)}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                    <div className={styles.small}>
-                      Cash:{" "}
-                      {w.latestCash != null ? (
-                        <span className={styles.mono}>
-                          {w.latestCash.toFixed(2)}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  </td>
-                  <td className={pnlClass(w)}>
-                    <span className={styles.mono}>{formatPnL(w)}</span>
-                  </td>
-                  <td>
-                    <div className={styles.controlsRow}>
-                      <button
-                        className={`${styles.btn} ${styles.btnSm}`}
-                        disabled={busy}
-                        onClick={() => void handleResetDaily(w)}
-                      >
-                        Reset day
-                      </button>
-                    </div>
-                    <div className={styles.small}>
-                      Latest stats:{" "}
-                      {w.latestStatsAtUtc
-                        ? new Date(
-                            w.latestStatsAtUtc,
-                          ).toLocaleTimeString()
-                        : "—"}
-                    </div>
-                  </td>
-                </tr>
+                      <div className={styles.controlsRow}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          disabled={busy}
+                          onClick={() => void handleSetCapital(w)}
+                        >
+                          Set
+                        </button>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div className={styles.small}>
+                        Equity:{" "}
+                        {w.latestEquity != null ? (
+                          <span className={styles.mono}>{w.latestEquity.toFixed(2)}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </div>
+                      <div className={styles.small}>
+                        Cash:{" "}
+                        {w.latestCash != null ? (
+                          <span className={styles.mono}>{w.latestCash.toFixed(2)}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </div>
+                    </td>
+
+                    <td className={pnlClass(w)}>
+                      <span className={styles.mono}>{formatPnL(w)}</span>
+                    </td>
+
+                    <td>
+                      <div className={styles.controlsRow}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSm}`}
+                          disabled={busy}
+                          onClick={() => void handleResetDaily(w)}
+                        >
+                          Reset day
+                        </button>
+                      </div>
+                      <div className={styles.small}>
+                        Latest stats:{" "}
+                        {w.latestStatsAtUtc
+                          ? new Date(w.latestStatsAtUtc).toLocaleTimeString()
+                          : "-"}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {expanded[w.id] && (
+                    <tr>
+                      <td colSpan={8}>
+                        <div className={styles.expandCard}>
+                          <div className={styles.subHeader}>Timeframe performance</div>
+                          {w.timeframeStats && w.timeframeStats.length > 0 ? (
+                            <table className={styles.subTable}>
+                              <thead>
+                                <tr>
+                                  <th>TF</th>
+                                  <th>Win %</th>
+                                  <th>Trades</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {w.timeframeStats.map((tf) => (
+                                  <tr key={tf.timeframeId}>
+                                    <td>{tf.timeframeCode}</td>
+                                    <td>
+                                      {tf.successRatePct != null
+                                        ? tf.successRatePct.toFixed(1)
+                                        : "-"}
+                                    </td>
+                                    <td>{tf.tradesSampleCount ?? "-"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className={styles.small}>No trades yet for this worker.</div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
             {!loading && visibleWorkers.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <span className={styles.small}>
-                    No active workers configured yet. Once your Python
-                    engine creates rows in <code>workers</code> with{" "}
-                    <code>is_active = 1</code>, they’ll show up here.
-                  </span>
-                </td>
-              </tr>
-            )}
+                  No active workers configured yet. Once your Python
+                  engine creates rows in <code>workers</code> with{" "}
+                  <code>is_active = 1</code>, they'll show up here.
+                </span>
+              </td>
+            </tr>
+          )}
           </tbody>
         </table>
       </div>
@@ -386,3 +454,13 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
 };
 
 export default WorkerBotsPanel;
+
+
+
+
+
+
+
+
+
+

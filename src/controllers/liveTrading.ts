@@ -28,6 +28,22 @@ export type WorkerSummaryDto = {
   // Optional: win-rate stats for worker, if backend exposes them
   successRatePct?: number | null;
   tradesSampleCount?: number | null;
+
+  // Runtime/health metadata
+  runtimeInstanceId?: string | null;
+  lastHeartbeatAtUtc?: string | null;
+
+  timeframeStats?: TimeframeWinRateDto[];
+  bestTimeframeCode?: string | null;
+  bestTimeframeSuccessRatePct?: number | null;
+};
+
+export type TimeframeWinRateDto = {
+  timeframeId: number;
+  timeframeCode: string;
+  timeframeMinutes: number;
+  successRatePct?: number | null;
+  tradesSampleCount?: number | null;
 };
 
 export type RecommendationStatus =

@@ -174,3 +174,24 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+
+.expandCard {
+  margin-top: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.subTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.subTable th,
+.subTable td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}

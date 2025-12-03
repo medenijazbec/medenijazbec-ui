@@ -119,13 +119,13 @@ export default function LiveTradingPage() {
                     onClick={reload}
                     disabled={loading}
                   >
-                    {loading ? "Refreshing…" : "Refresh now"}
+                    {loading ? "Refreshing..." : "Refresh now"}
                   </button>
                 </div>
                 <div className={styles.smallMeta}>
                   Last updated:{" "}
                   <span className={styles.kbd}>
-                    {lastUpdatedAt ? formatLjubljana(lastUpdatedAt) : "—"}
+                    {lastUpdatedAt ? formatLjubljana(lastUpdatedAt) : "-"}
                   </span>
                 </div>
               </div>
@@ -167,7 +167,7 @@ export default function LiveTradingPage() {
                 {!marketClock && (
                   <p className={styles.small}>
                     {loading
-                      ? "Loading market clock…"
+                      ? "Loading market clock..."
                       : "Market clock is not available at the moment."}
                   </p>
                 )}
@@ -260,7 +260,7 @@ export default function LiveTradingPage() {
                   <h3 className={styles.h3}>Symbol & timeframe</h3>
                   <span className={styles.badgeSoft}>
                     {settings
-                      ? `${settings.symbol} · ${settings.timeframeCode}`
+                      ? `${settings.symbol} / ${settings.timeframeCode}`
                       : "No settings"}
                   </span>
                 </div>
@@ -268,7 +268,7 @@ export default function LiveTradingPage() {
                 {!settings && (
                   <p className={styles.small}>
                     {loading
-                      ? "Loading trading settings…"
+                      ? "Loading trading settings..."
                       : "Trading settings are not configured yet."}
                   </p>
                 )}
@@ -345,7 +345,7 @@ export default function LiveTradingPage() {
                         <span className={styles.kbd}>
                           {lastCandleTimeUtc
                             ? formatUtc(lastCandleTimeUtc)
-                            : "—"}
+                            : "-"}
                         </span>
                       </div>
                     </div>
@@ -395,7 +395,7 @@ export default function LiveTradingPage() {
                     {loading && !workers.length && (
                       <tr>
                         <td colSpan={9} className={styles.small}>
-                          Loading workers…
+                          Loading workers...
                         </td>
                       </tr>
                     )}
@@ -415,13 +415,13 @@ export default function LiveTradingPage() {
                         <td>
                           <div className={styles.bold}>{w.name}</div>
                           <div className={styles.small}>
-                            {w.strategyName || "—"}
+                            {w.strategyName || "-"}
                           </div>
                         </td>
                         <td>
-                          {w.equity != null ? w.equity.toFixed(2) : "—"}
+                          {w.equity != null ? w.equity.toFixed(2) : "-"}
                         </td>
-                        <td>{w.cash != null ? w.cash.toFixed(2) : "—"}</td>
+                        <td>{w.cash != null ? w.cash.toFixed(2) : "-"}</td>
                         <td
                           className={
                             w.realizedPnl != null && w.realizedPnl < 0
@@ -431,7 +431,7 @@ export default function LiveTradingPage() {
                         >
                           {w.realizedPnl != null
                             ? w.realizedPnl.toFixed(2)
-                            : "—"}
+                            : "-"}
                         </td>
                         <td
                           className={
@@ -442,12 +442,12 @@ export default function LiveTradingPage() {
                         >
                           {w.unrealizedPnl != null
                             ? w.unrealizedPnl.toFixed(2)
-                            : "—"}
+                            : "-"}
                         </td>
-                        <td>{w.openPositions ?? "—"}</td>
-                        <td>{w.totalTrades ?? "—"}</td>
+                        <td>{w.openPositions ?? "-"}</td>
+                        <td>{w.totalTrades ?? "-"}</td>
                         <td className={styles.kbd}>
-                          {w.snapshotUtc ? formatUtc(w.snapshotUtc) : "—"}
+                          {w.snapshotUtc ? formatUtc(w.snapshotUtc) : "-"}
                         </td>
                       </tr>
                     ))}
@@ -504,3 +504,4 @@ export default function LiveTradingPage() {
     </div>
   );
 }
+
