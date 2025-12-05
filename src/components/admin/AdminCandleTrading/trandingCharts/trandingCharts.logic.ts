@@ -7,8 +7,9 @@ import { http } from "@/api/api";
 export type SymbolConfig = {
   symbol: string;
   label: string;
-  timeframeCode: string; // e.g. '1m'
 };
+
+export type TimeframeDto = { id: number; code: string; minutes: number };
 
 // Provider-agnostic shape (DB-merged rows). Provider field is optional;
 // the new API doesn’t include it by default.
@@ -156,9 +157,14 @@ export function useCandles(
 
 // Default list of symbols user can add to their “profile”.
 export const DEFAULT_SYMBOLS: SymbolConfig[] = [
-  { symbol: "NVDA", label: "NVIDIA", timeframeCode: "1m" },
-  { symbol: "MSFT", label: "Microsoft", timeframeCode: "1m" },
-  { symbol: "AAPL", label: "Apple", timeframeCode: "1m" },
-  { symbol: "AMD", label: "AMD", timeframeCode: "1m" },
-  { symbol: "TSLA", label: "Tesla", timeframeCode: "1m" },
+  { symbol: "NVDA", label: "NVIDIA" },
+  { symbol: "MSFT", label: "Microsoft" },
+  { symbol: "AAPL", label: "Apple" },
+  { symbol: "AMD", label: "AMD" },
+  { symbol: "TSLA", label: "Tesla" },
 ];
+
+export async function fetchTimeframes(): Promise<TimeframeDto[]> {
+  const list = await http.get<TimeframeDto[]>("/api/nvda-trading/timeframes");
+  return Array.isArray(list) ? list : [];
+}

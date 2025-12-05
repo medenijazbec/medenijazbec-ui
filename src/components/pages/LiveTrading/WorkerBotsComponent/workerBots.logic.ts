@@ -5,9 +5,15 @@ import {
   type WorkerSummaryDto,
   type WorkerMode,
   type ResetWorkerDailyRequest,
+  type AllocateWorkerDailyRequest,
 } from "@/controllers/liveTrading";
 
-export type { WorkerSummaryDto, WorkerMode, ResetWorkerDailyRequest };
+export type {
+  WorkerSummaryDto,
+  WorkerMode,
+  ResetWorkerDailyRequest,
+  AllocateWorkerDailyRequest,
+};
 
 export interface UpdateWorkerModeRequest {
   mode: WorkerMode | string;
@@ -18,7 +24,11 @@ export interface UpdateWorkerActiveRequest {
 }
 
 export interface AllocateWorkerDailyRequest {
-  dailyCapital: number;
+  /**
+   * Backend expects baseCapital; keep dailyCapital for compatibility.
+   */
+  baseCapital?: number;
+  dailyCapital?: number;
 }
 
 /**
@@ -42,7 +52,7 @@ export async function updateWorkerMode(
 
 /**
  * Enable / pause worker trading.
- * isActive = true → trading active; isActive = false → trading paused.
+ * isActive = true -> trading active; isActive = false -> trading paused.
  */
 export async function updateWorkerActive(
   workerId: number,
@@ -56,9 +66,9 @@ export async function updateWorkerActive(
  */
 export async function setWorkerDailyCapital(
   workerId: number,
-  dailyCapital: number,
+  payload: AllocateWorkerDailyRequest,
 ): Promise<void> {
-  await liveTrading.setWorkerDailyCapital(workerId, dailyCapital);
+  await liveTrading.setWorkerDailyCapital(workerId, payload);
 }
 
 /**

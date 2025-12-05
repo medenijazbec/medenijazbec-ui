@@ -121,7 +121,10 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
     }
     try {
       setBusy(worker.id, true);
-      await setWorkerDailyCapital(worker.id, val);
+      await setWorkerDailyCapital(worker.id, {
+        baseCapital: val,
+        dailyCapital: val,
+      });
       await load();
     } catch (err) {
       console.error(err);
@@ -407,6 +410,7 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
                                   <th>TF</th>
                                   <th>Win %</th>
                                   <th>Trades</th>
+                                  <th>Equity / Cash / Base</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -419,6 +423,31 @@ export const WorkerBotsPanel: React.FC<WorkerBotsPanelProps> = ({
                                         : "-"}
                                     </td>
                                     <td>{tf.tradesSampleCount ?? "-"}</td>
+                                    <td>
+                                      {tf.equity != null ? (
+                                        <span className={styles.mono}>
+                                          {tf.equity.toFixed(2)}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}{" "}
+                                      /{" "}
+                                      {tf.cash != null ? (
+                                        <span className={styles.mono}>
+                                          {tf.cash.toFixed(2)}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}{" "}
+                                      /{" "}
+                                      {tf.baseCapital != null ? (
+                                        <span className={styles.mono}>
+                                          {tf.baseCapital.toFixed(2)}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>

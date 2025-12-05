@@ -44,6 +44,9 @@ export type TimeframeWinRateDto = {
   timeframeMinutes: number;
   successRatePct?: number | null;
   tradesSampleCount?: number | null;
+  equity?: number | null;
+  cash?: number | null;
+  baseCapital?: number | null;
 };
 
 export type RecommendationStatus =
@@ -165,6 +168,11 @@ export interface ResetWorkerDailyRequest {
   resetNote?: string;
 }
 
+export interface AllocateWorkerDailyRequest {
+  baseCapital?: number;
+  dailyCapital?: number;
+}
+
 // ----------------- SMALL HELPERS -----------------
 
 export function formatUtc(iso?: string | null): string {
@@ -204,10 +212,10 @@ export const liveTrading = {
       isActive,
     }),
 
-  setWorkerDailyCapital: (workerId: number, dailyCapital: number) =>
-    http.put<void>(`/api/Workers/${workerId}/daily-capital`, {
-      dailyCapital,
-    }),
+  setWorkerDailyCapital: (
+    workerId: number,
+    payload: AllocateWorkerDailyRequest,
+  ) => http.put<void>(`/api/Workers/${workerId}/daily-capital`, payload),
 
   resetWorkerDaily: (workerId: number, payload: ResetWorkerDailyRequest) =>
     http.post<void>(`/api/Workers/${workerId}/reset-daily`, payload),

@@ -1,13 +1,20 @@
 // path: src/components/admin/AdminCandleTrading/trandingCharts/TradingChartsPanel.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styles from "./TradingChartsPanel.module.css";
 import TradingChartCard from "./TradingChartCard";
-import { DEFAULT_SYMBOLS, type SymbolConfig } from "./trandingCharts.logic";
+import {
+  DEFAULT_SYMBOLS,
+  type SymbolConfig,
+  type TimeframeDto,
+  fetchTimeframes,
+} from "./trandingCharts.logic";
 
 type ViewMode = "single" | "all";
 
 export default function TradingChartsPanel() {
   const [available] = useState<SymbolConfig[]>(DEFAULT_SYMBOLS);
+  const [timeframes, setTimeframes] = useState<TimeframeDto[]>([]);
+  const [timeframeBySymbol, setTimeframeBySymbol] = useState<Record<string, string>>({});
 
   // Symbols the user has in their watchlist (local for now)
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(["NVDA"]);
@@ -21,6 +28,26 @@ export default function TradingChartsPanel() {
     setMainSymbol(symbol);
     setMode("single");
   };
+
+  useEffect(() => {
+    fetchTimeframes()
+      .then((list) => {
+        if (list && list.length > 0) {
+          setTimeframes(list);
+          const defaultTf = list.find((t) => t.code === "1m")?.code || list[0].code;
+          setTimeframeBySymbol((prev) => {
+            const next: Record<string, string> = { ...prev };
+            for (const cfg of available) {
+              next[cfg.symbol] = next[cfg.symbol] || defaultTf;
+            }
+            return next;
+          });
+        }
+      })
+      .catch(() => {
+        // leave empty on failure; component will fallback to "1m"
+      });
+  }, [available]);
 
   const toggleSelected = (symbol: string) => {
     setSelectedSymbols((prev) => {
@@ -168,6 +195,15 @@ export default function TradingChartsPanel() {
           <TradingChartCard
             key={cfg.symbol}
             config={cfg}
+            timeframeCode={
+              timeframeBySymbol[cfg.symbol] ||
+              timeframes.find((t) => t.code === "1m")?.code ||
+              "1m"
+            }
+            onTimeframeChange={(tf) =>
+              setTimeframeBySymbol((prev) => ({ ...prev, [cfg.symbol]: tf }))
+            }
+            timeframeOptions={timeframes}
             isFocused={cfg.symbol === mainSymbol}
             onFocus={() => handleFocusChart(cfg.symbol)}
           />

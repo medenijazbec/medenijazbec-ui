@@ -5,8 +5,13 @@ import styles from "./TradingChartsPanel.module.css";
 import { useCandles, type SymbolConfig } from "./trandingCharts.logic";
 import { http } from "@/api/api";
 
+type TimeframeOption = { id: number; code: string; minutes: number };
+
 type Props = {
   config: SymbolConfig;
+  timeframeCode: string;
+  timeframeOptions: TimeframeOption[];
+  onTimeframeChange: (tfCode: string) => void;
   isFocused: boolean;
   onFocus: () => void;
 };
@@ -351,10 +356,13 @@ function getSessionBoundsUtc(dayStartUtc: number): {
 
 export default function TradingChartCard({
   config,
+  timeframeCode,
+  timeframeOptions,
+  onTimeframeChange,
   isFocused,
   onFocus,
 }: Props) {
-  const { symbol, label, timeframeCode } = config;
+  const { symbol, label } = config;
 
   // How many candles to keep in memory.
   // We want enough history so zooming out reveals more than the ~8h initial view.
@@ -1359,6 +1367,25 @@ export default function TradingChartCard({
           <div className={styles.chartSub}>
             {symbol} · {timeframeCode} · candlesticks
           </div>
+          {timeframeOptions && timeframeOptions.length > 0 && (
+            <div className={styles.tfSelector}>
+              <label className={styles.small} htmlFor={`${symbol}-tf`}>
+                Timeframe
+              </label>
+              <select
+                id={`${symbol}-tf`}
+                className={styles.select}
+                value={timeframeCode}
+                onChange={(e) => onTimeframeChange(e.target.value)}
+              >
+                {timeframeOptions.map((tf) => (
+                  <option key={tf.id} value={tf.code}>
+                    {tf.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className={styles.chartHeadRight}>
